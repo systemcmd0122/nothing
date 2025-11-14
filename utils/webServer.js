@@ -12,6 +12,30 @@ const PORT = process.env.WEB_PORT || 3000;
 app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.json());
 
+// ==================== Keep-Alive エンドポイント ====================
+
+// Ping エンドポイント（Koyeb Keep-Alive用）
+app.get('/ping', (_req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
+// Health チェックエンドポイント
+app.get('/health', (_req, res) => {
+    const health = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage()
+    };
+    res.status(200).json(health);
+});
+
+// ==================== API エンドポイント ====================
+
 // ホームページ
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));

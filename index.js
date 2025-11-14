@@ -23,6 +23,7 @@ const { handleRegisterButton, handleRegisterModal } = require('./utils/buttonHan
 const { handleViewMyRankButton, handleViewMyHistoryButton } = require('./utils/statsButtonHandler');
 const { setUpdatingStatus, setPlayingStatus } = require('./utils/statusManager');
 const { startWebServer } = require('./utils/webServer');
+const { startKeepAlive } = require('./utils/keepAlive');
 
 // クライアントの作成
 const client = new Client({
@@ -80,6 +81,9 @@ client.once('ready', async () => {
     
     // Expressウェブサーバーの起動
     startWebServer();
+    
+    // Keep-Alive機能を開始（Koyeb無料枠でのスリープモード防止）
+    startKeepAlive();
     
     setInterval(() => autoUpdateRanks(client, setUpdatingStatus, setPlayingStatus), UPDATE_INTERVAL);
     

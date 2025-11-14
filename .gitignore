@@ -24,5 +24,10 @@ Thumbs.db
 logs/
 *.log
 
+# Secrets and sensitive files
+token
+token.*
+secrets.*
+
 # User data (optional - keep or remove based on preference)
 # user_data.json
