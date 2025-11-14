@@ -26,48 +26,96 @@ const RANK_COLORS = {
     'Radiant': 0xFFFF00
 };
 
-// Valorant APIからランク情報を取得
-async function getValorantRank(username, tag, region, platform = 'pc') {
-    try {
-        const baseUrl = process.env.VALORANT_API_BASE_URL || 'https://vaccie.pythonanywhere.com';
-        const endpoint = platform === 'console' 
-            ? `${baseUrl}/mmr/${username}/${tag}/${region}/console`
-            : `${baseUrl}/mmr/${username}/${tag}/${region}`;
-        
-        const response = await fetch(endpoint);
-        
-        if (!response.ok) {
+// Valorant APIからランク情報を取得（リトライ機能付き）
+async function getValorantRank(username, tag, region, platform = 'pc', retries = 3) {
+    const baseUrl = process.env.VALORANT_API_BASE_URL || 'https://vaccie.pythonanywhere.com';
+    const endpoint = platform === 'console' 
+        ? `${baseUrl}/mmr/${username}/${tag}/${region}/console`
+        : `${baseUrl}/mmr/${username}/${tag}/${region}`;
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const response = await fetch(endpoint, {
+                timeout: 10000
+            });
+            
+            if (response.ok) {
+                const text = await response.text();
+                return text;
+            }
+            
+            // 429 (Too Many Requests) の場合、指数バックオフでリトライ
+            if (response.status === 429) {
+                const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+                if (attempt < retries) {
+                    console.warn(`レート制限に達しました。${waitTime}ms 後に再試行します...`);
+                    await sleep(waitTime);
+                    continue;
+                }
+            }
+            
+            // 429以外のエラーはリトライしない
             throw new Error(`API Error: ${response.status}`);
+        } catch (err) {
+            if (attempt === retries) {
+                console.error('API取得エラー:', err);
+                return null;
+            }
+            
+            // タイムアウト時は再試行
+            const waitTime = Math.pow(2, attempt) * 1000;
+            console.warn(`エラーが発生しました。${waitTime}ms 後に再試行します...`);
+            await sleep(waitTime);
         }
-        
-        const text = await response.text();
-        return text;
-    } catch (err) {
-        console.error('API取得エラー:', err);
-        return null;
     }
+    
+    return null;
 }
 
-// Valorant APIからマッチ履歴を取得
-async function getValorantMatchHistory(username, tag, region, platform = 'pc', timezone = null) {
-    try {
-        const baseUrl = process.env.VALORANT_API_BASE_URL || 'https://vaccie.pythonanywhere.com';
-        const tz = timezone || process.env.TIMEZONE || 'Asia/Tokyo';
-        const platformPath = platform === 'console' ? 'console' : 'pc';
-        const endpoint = `${baseUrl}/match_history/${username}/${tag}/${region}/${platformPath}?timezone=${tz}`;
-        
-        const response = await fetch(endpoint);
-        
-        if (!response.ok) {
+// Valorant APIからマッチ履歴を取得（リトライ機能付き）
+async function getValorantMatchHistory(username, tag, region, platform = 'pc', timezone = null, retries = 3) {
+    const baseUrl = process.env.VALORANT_API_BASE_URL || 'https://vaccie.pythonanywhere.com';
+    const tz = timezone || process.env.TIMEZONE || 'Asia/Tokyo';
+    const platformPath = platform === 'console' ? 'console' : 'pc';
+    const endpoint = `${baseUrl}/match_history/${username}/${tag}/${region}/${platformPath}?timezone=${tz}`;
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const response = await fetch(endpoint, {
+                timeout: 10000
+            });
+            
+            if (response.ok) {
+                const text = await response.text();
+                return text;
+            }
+            
+            // 429 (Too Many Requests) の場合、指数バックオフでリトライ
+            if (response.status === 429) {
+                const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+                if (attempt < retries) {
+                    console.warn(`レート制限に達しました。${waitTime}ms 後に再試行します...`);
+                    await sleep(waitTime);
+                    continue;
+                }
+            }
+            
+            // 429以外のエラーはリトライしない
             throw new Error(`API Error: ${response.status}`);
+        } catch (err) {
+            if (attempt === retries) {
+                console.error('マッチ履歴取得エラー:', err);
+                return null;
+            }
+            
+            // タイムアウト時は再試行
+            const waitTime = Math.pow(2, attempt) * 1000;
+            console.warn(`エラーが発生しました。${waitTime}ms 後に再試行します...`);
+            await sleep(waitTime);
         }
-        
-        const text = await response.text();
-        return text;
-    } catch (err) {
-        console.error('マッチ履歴取得エラー:', err);
-        return null;
     }
+    
+    return null;
 }
 
 // ランク名を抽出（例: "Immortal 1, RR: 2 (-21)" -> "Immortal 1"）

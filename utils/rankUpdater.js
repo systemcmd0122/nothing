@@ -29,8 +29,9 @@ async function autoUpdateRanks(client, setUpdatingStatus, setPlayingStatus) {
                     userInfo.platform
                 );
                 
-                if (!rankText) {
-                    Logger.warn(`ランク取得失敗: ${userInfo.username}#${userInfo.tag}`, 'RANK-UPDATE');
+                // APIエラーやnullの場合はスキップ（エラーメッセージを表示しない）
+                if (!rankText || rankText.includes('Error') || rankText.includes('Errore') || rankText.includes('エラー')) {
+                    Logger.debug(`ランク取得スキップ: ${userInfo.username}#${userInfo.tag} (API エラーまたはレート制限)`, 'RANK-UPDATE');
                     continue;
                 }
                 
