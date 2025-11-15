@@ -297,8 +297,8 @@ app.post('/api/admin/user/register', adminAuthMiddleware, (req, res) => {
             return res.status(400).json({ error: '必須フィールドが不足しています' });
         }
         
-        if (!discordId.match(/^\d{18}$/)) {
-            return res.status(400).json({ error: 'Discord ID は18桁の数字である必要があります' });
+        if (!discordId.match(/^\d{18,19}$/)) {
+            return res.status(400).json({ error: 'Discord ID は18〜19桁の数字である必要があります' });
         }
         
         const userData = loadUserData();

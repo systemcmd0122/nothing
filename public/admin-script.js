@@ -272,8 +272,8 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         };
 
         // バリデーション
-        if (!userData.discordId.match(/^\d{18}$/)) {
-            registerError.textContent = 'Discord ID は18桁の数字である必要があります';
+        if (!userData.discordId.match(/^\d{18,19}$/)) {
+            registerError.textContent = 'Discord ID は18〜19桁の数字である必要があります';
             return;
         }
 
