@@ -1,8 +1,9 @@
 const express = require('express');
 const path = require('path');
-const { loadUserData } = require('./dataManager');
+const { loadUserData, saveUserData } = require('./dataManager');
 const { getValorantRank, getValorantMatchHistory } = require('./rankUtils');
 const Logger = require('./logger');
+const { verifyPassword, createToken, adminAuthMiddleware } = require('./adminAuth');
 
 // Expressアプリケーションの設定
 const app = express();
@@ -39,6 +40,11 @@ app.get('/health', (_req, res) => {
 // ホームページ
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// 管理ページ
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/admin.html'));
 });
 
 // ユーザー一覧API
@@ -141,6 +147,191 @@ app.get('/api/status', (req, res) => {
             success: false,
             error: 'ステータスの取得に失敗しました'
         });
+    }
+});
+
+// ==================== 管理者用 API エンドポイント ====================
+
+// ログイン
+app.post('/api/admin/login', (req, res) => {
+    try {
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.status(400).json({ error: 'パスワードが必要です' });
+        }
+        
+        if (!verifyPassword(password)) {
+            Logger.warn('管理者ログイン失敗: パスワード不一致', 'ADMIN');
+            return res.status(401).json({ error: 'パスワードが正しくありません' });
+        }
+        
+        const token = createToken();
+        Logger.success('管理者がログインしました', 'ADMIN');
+        
+        res.json({
+            success: true,
+            token,
+            message: 'ログイン成功'
+        });
+    } catch (err) {
+        Logger.error('ログインエラー', 'ADMIN', err);
+        res.status(500).json({ error: 'ログインに失敗しました' });
+    }
+});
+
+// ユーザー一覧（管理者用）
+app.get('/api/admin/users', adminAuthMiddleware, (req, res) => {
+    try {
+        const userData = loadUserData();
+        res.json(userData);
+    } catch (err) {
+        Logger.error('管理者: ユーザー一覧取得エラー', 'ADMIN', err);
+        res.status(500).json({ error: 'ユーザー一覧の取得に失敗しました' });
+    }
+});
+
+// JSONデータ取得（管理者用）
+app.get('/api/admin/data', adminAuthMiddleware, (req, res) => {
+    try {
+        const userData = loadUserData();
+        res.json(userData);
+    } catch (err) {
+        Logger.error('管理者: JSONデータ取得エラー', 'ADMIN', err);
+        res.status(500).json({ error: 'データの取得に失敗しました' });
+    }
+});
+
+// JSONデータ保存（管理者用）
+app.post('/api/admin/data/save', adminAuthMiddleware, (req, res) => {
+    try {
+        const newData = req.body;
+        
+        // データ検証
+        if (typeof newData !== 'object' || newData === null) {
+            return res.status(400).json({ error: '無効なデータ形式です' });
+        }
+        
+        saveUserData(newData);
+        Logger.success('管理者がJSONデータを保存しました', 'ADMIN');
+        
+        res.json({
+            success: true,
+            message: 'データを保存しました'
+        });
+    } catch (err) {
+        Logger.error('管理者: JSONデータ保存エラー', 'ADMIN', err);
+        res.status(500).json({ error: 'データの保存に失敗しました' });
+    }
+});
+
+// ユーザー更新（管理者用）
+app.post('/api/admin/user/update', adminAuthMiddleware, (req, res) => {
+    try {
+        const { userId, currentRank } = req.body;
+        
+        if (!userId || !currentRank) {
+            return res.status(400).json({ error: 'userId と currentRank が必要です' });
+        }
+        
+        const userData = loadUserData();
+        
+        if (!userData[userId]) {
+            return res.status(404).json({ error: 'ユーザーが見つかりません' });
+        }
+        
+        userData[userId].currentRank = currentRank;
+        userData[userId].lastUpdated = new Date().toISOString();
+        saveUserData(userData);
+        
+        Logger.success(`管理者がユーザー ${userId} のランクを更新: ${currentRank}`, 'ADMIN');
+        
+        res.json({
+            success: true,
+            message: 'ユーザーを更新しました'
+        });
+    } catch (err) {
+        Logger.error('管理者: ユーザー更新エラー', 'ADMIN', err);
+        res.status(500).json({ error: 'ユーザーの更新に失敗しました' });
+    }
+});
+
+// ユーザー削除（管理者用）
+app.delete('/api/admin/user/delete', adminAuthMiddleware, (req, res) => {
+    try {
+        const { userId } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId が必要です' });
+        }
+        
+        const userData = loadUserData();
+        
+        if (!userData[userId]) {
+            return res.status(404).json({ error: 'ユーザーが見つかりません' });
+        }
+        
+        const username = userData[userId].username;
+        delete userData[userId];
+        saveUserData(userData);
+        
+        Logger.success(`管理者がユーザー ${username} を削除しました`, 'ADMIN');
+        
+        res.json({
+            success: true,
+            message: 'ユーザーを削除しました'
+        });
+    } catch (err) {
+        Logger.error('管理者: ユーザー削除エラー', 'ADMIN', err);
+        res.status(500).json({ error: 'ユーザーの削除に失敗しました' });
+    }
+});
+
+// ユーザー登録（管理者用）
+app.post('/api/admin/user/register', adminAuthMiddleware, (req, res) => {
+    try {
+        const { discordId, discordUsername, username, tag, region, platform, currentRank } = req.body;
+        
+        // バリデーション
+        if (!discordId || !username || !tag || !region) {
+            return res.status(400).json({ error: '必須フィールドが不足しています' });
+        }
+        
+        if (!discordId.match(/^\d{18}$/)) {
+            return res.status(400).json({ error: 'Discord ID は18桁の数字である必要があります' });
+        }
+        
+        const userData = loadUserData();
+        
+        // 既に登録されていないか確認
+        if (userData[discordId]) {
+            return res.status(409).json({ error: 'このユーザーは既に登録されています' });
+        }
+        
+        // 新しいユーザーを登録
+        userData[discordId] = {
+            discordId,
+            discordUsername,
+            username,
+            tag,
+            region,
+            platform: platform || 'pc',
+            currentRank: currentRank || 'Unranked',
+            lastUpdated: new Date().toISOString()
+        };
+        
+        saveUserData(userData);
+        
+        Logger.success(`管理者が新規ユーザーを登録: ${username}#${tag} (Discord: ${discordUsername})`, 'ADMIN');
+        
+        res.status(201).json({
+            success: true,
+            message: 'ユーザーを登録しました',
+            userId: discordId
+        });
+    } catch (err) {
+        Logger.error('管理者: ユーザー登録エラー', 'ADMIN', err);
+        res.status(500).json({ error: 'ユーザーの登録に失敗しました' });
     }
 });
 

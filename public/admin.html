@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ランク管理パネル - 管理者専用</title>
+    <link rel="stylesheet" href="admin-styles.css">
+</head>
+<body>
+    <!-- ログイン画面 -->
+    <div id="loginContainer" class="login-container active">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>管理者ログイン</h1>
+                <p>ランク管理パネルへようこそ</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="password">パスワード</label>
+                    <input type="password" id="password" required placeholder="管理者パスワードを入力">
+                    <span class="eye-icon" onclick="togglePassword()">👁️</span>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-large">ログイン</button>
+                <div id="loginError" class="error-message"></div>
+            </form>
+            
+            <div class="login-footer">
+                <p>権限がない場合、アクセスはできません</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理パネル -->
+    <div id="adminPanel" class="admin-panel">
+        <header class="admin-header">
+            <div class="header-content">
+                <h1>📊 ランク管理パネル</h1>
+                <button id="logoutBtn" class="btn btn-logout">ログアウト</button>
+            </div>
+        </header>
+
+        <main class="admin-main">
+            <!-- タブナビゲーション -->
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="users">ユーザー管理</button>
+                <button class="tab-btn" data-tab="register">ユーザー登録</button>
+                <button class="tab-btn" data-tab="edit">データ編集</button>
+                <button class="tab-btn" data-tab="backup">バックアップ</button>
+            </nav>
+
+            <!-- ユーザー管理タブ -->
+            <div id="users" class="tab-content active">
+                <div class="tab-header">
+                    <h2>ユーザー一覧</h2>
+                    <div class="search-box">
+                        <input type="text" id="userSearch" placeholder="ユーザー名で検索...">
+                    </div>
+                </div>
+
+                <div id="usersList" class="users-grid">
+                    <p class="loading">ユーザーデータを読み込み中...</p>
+                </div>
+            </div>
+
+            <!-- ユーザー登録タブ -->
+            <div id="register" class="tab-content">
+                <div class="tab-header">
+                    <h2>新規ユーザー登録</h2>
+                    <p class="tab-description">Valorantのアカウント情報を入力して新しいユーザーを登録します</p>
+                </div>
+
+                <div class="register-container">
+                    <form id="registerForm" class="register-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="regDiscordId">Discord ID *</label>
+                                <input type="text" id="regDiscordId" placeholder="例: 123456789012345678" required>
+                                <small>ユーザーの Discord ID を入力してください</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="regDiscordUsername">Discord ユーザー名 *</label>
+                                <input type="text" id="regDiscordUsername" placeholder="例: Eknes" required>
+                                <small>Discord での表示名</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="regValUsername">Valorant ユーザー名 *</label>
+                                <input type="text" id="regValUsername" placeholder="例: TaisukeVAL" required>
+                                <small>Valorant のゲーム内名</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="regValTag">Valorant タグ *</label>
+                                <input type="text" id="regValTag" placeholder="例: 0122" required maxlength="5">
+                                <small>Valorant の #の後の数字</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="regRegion">リージョン *</label>
+                                <select id="regRegion" required>
+                                    <option value="">選択してください</option>
+                                    <option value="jp">JP - 日本</option>
+                                    <option value="kr">KR - 韓国</option>
+                                    <option value="sg">SG - シンガポール</option>
+                                    <option value="th">TH - タイ</option>
+                                    <option value="vn">VN - ベトナム</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="regPlatform">プラットフォーム *</label>
+                                <select id="regPlatform" required>
+                                    <option value="pc">PC</option>
+                                    <option value="console">コンソール</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="regCurrentRank">現在のランク</label>
+                            <select id="regCurrentRank">
+                                <option value="Unranked">Unranked</option>
+                                <option value="Iron 3">Iron 3</option>
+                                <option value="Iron 2">Iron 2</option>
+                                <option value="Iron 1">Iron 1</option>
+                                <option value="Bronze 3">Bronze 3</option>
+                                <option value="Bronze 2">Bronze 2</option>
+                                <option value="Bronze 1">Bronze 1</option>
+                                <option value="Silver 3">Silver 3</option>
+                                <option value="Silver 2">Silver 2</option>
+                                <option value="Silver 1">Silver 1</option>
+                                <option value="Gold 3">Gold 3</option>
+                                <option value="Gold 2">Gold 2</option>
+                                <option value="Gold 1">Gold 1</option>
+                                <option value="Platinum 3">Platinum 3</option>
+                                <option value="Platinum 2">Platinum 2</option>
+                                <option value="Platinum 1">Platinum 1</option>
+                                <option value="Diamond 3">Diamond 3</option>
+                                <option value="Diamond 2">Diamond 2</option>
+                                <option value="Diamond 1">Diamond 1</option>
+                                <option value="Ascendant 3">Ascendant 3</option>
+                                <option value="Ascendant 2">Ascendant 2</option>
+                                <option value="Ascendant 1">Ascendant 1</option>
+                                <option value="Immortal 3">Immortal 3</option>
+                                <option value="Immortal 2">Immortal 2</option>
+                                <option value="Immortal 1">Immortal 1</option>
+                                <option value="Radiant">Radiant</option>
+                            </select>
+                        </div>
+
+                        <div id="registerError" class="error-message"></div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-success btn-large">ユーザーを登録</button>
+                            <button type="reset" class="btn btn-secondary">クリア</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- データ編集タブ -->
+            <div id="edit" class="tab-content">
+                <div class="tab-header">
+                    <h2>JSON データ編集</h2>
+                </div>
+
+                <div class="editor-container">
+                    <div class="editor-controls">
+                        <button id="formatBtn" class="btn btn-secondary">フォーマット</button>
+                        <button id="validateBtn" class="btn btn-secondary">検証</button>
+                        <button id="resetBtn" class="btn btn-secondary">リセット</button>
+                    </div>
+
+                    <textarea id="jsonEditor" class="json-editor" placeholder="JSON データ"></textarea>
+
+                    <div id="validationResult" class="validation-result"></div>
+
+                    <div class="editor-actions">
+                        <button id="saveBtn" class="btn btn-success btn-large">保存</button>
+                        <button id="cancelBtn" class="btn btn-secondary">キャンセル</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- バックアップタブ -->
+            <div id="backup" class="tab-content">
+                <div class="tab-header">
+                    <h2>バックアップ管理</h2>
+                </div>
+
+                <div class="backup-section">
+                    <h3>📥 エクスポート</h3>
+                    <p>現在のデータをダウンロード</p>
+                    <button id="exportBtn" class="btn btn-primary">ユーザーデータをダウンロード</button>
+                </div>
+
+                <div class="backup-section">
+                    <h3>📤 インポート</h3>
+                    <p>JSON ファイルをアップロード</p>
+                    <div class="file-upload">
+                        <input type="file" id="importFile" accept=".json" />
+                        <button id="importBtn" class="btn btn-primary">ファイルをアップロード</button>
+                    </div>
+                </div>
+
+                <div id="backupMessage" class="backup-message"></div>
+            </div>
+        </main>
+
+        <!-- 通知トースト -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script src="admin-script.js"></script>
+</body>
+</html>
