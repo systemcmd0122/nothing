@@ -290,10 +290,10 @@ app.delete('/api/admin/user/delete', adminAuthMiddleware, (req, res) => {
 // ユーザー登録（管理者用）
 app.post('/api/admin/user/register', adminAuthMiddleware, (req, res) => {
     try {
-        const { discordId, discordUsername, username, tag, region, platform, currentRank } = req.body;
+        const { discordId, discordUsername, username, tag, platform } = req.body;
         
         // バリデーション
-        if (!discordId || !username || !tag || !region) {
+        if (!discordId || !username || !tag) {
             return res.status(400).json({ error: '必須フィールドが不足しています' });
         }
         
@@ -314,9 +314,9 @@ app.post('/api/admin/user/register', adminAuthMiddleware, (req, res) => {
             discordUsername,
             username,
             tag,
-            region,
+            region: 'ap',
             platform: platform || 'pc',
-            currentRank: currentRank || 'Unranked',
+            currentRank: 'Unranked',
             lastUpdated: new Date().toISOString()
         };
         

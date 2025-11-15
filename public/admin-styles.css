@@ -405,6 +405,13 @@ body {
     color: #ff4655;
     font-weight: 700;
     font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.user-discord {
+    color: #5865f2;
+    font-size: 13px;
+    font-weight: 600;
     margin-bottom: 5px;
 }
 
@@ -437,17 +444,6 @@ body {
 .detail-value {
     color: #e0e0e0;
     font-weight: 600;
-}
-
-.user-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.user-actions button {
-    flex: 1;
-    padding: 8px 12px;
-    font-size: 12px;
 }
 
 .loading {

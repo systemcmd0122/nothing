@@ -126,6 +126,7 @@ function displayUsers(users) {
         <div class="user-card">
             <div class="user-info">
                 <div class="user-name">${escapeHtml(user.username)}</div>
+                <div class="user-discord">Discord: ${escapeHtml(user.discordUsername)}</div>
                 <div class="user-tag">${escapeHtml(user.username)}#${escapeHtml(user.tag)}</div>
             </div>
             <div class="user-details">
@@ -146,10 +147,6 @@ function displayUsers(users) {
                     <span class="detail-value">${escapeHtml(user.platform || 'pc')}</span>
                 </div>
             </div>
-            <div class="user-actions">
-                <button class="btn btn-secondary" onclick="editUser('${userId}', ${escapeJson(user)})">編集</button>
-                <button class="btn btn-secondary" style="background: #b73e1d;" onclick="deleteUser('${userId}', '${escapeHtml(user.username)}')">削除</button>
-            </div>
         </div>
     `).join('');
 }
@@ -159,60 +156,12 @@ document.getElementById('userSearch').addEventListener('input', (e) => {
     const searchTerm = e.target.value.toLowerCase();
     document.querySelectorAll('.user-card').forEach(card => {
         const name = card.querySelector('.user-name').textContent.toLowerCase();
-        card.style.display = name.includes(searchTerm) ? 'block' : 'none';
+        const discord = card.querySelector('.user-discord').textContent.toLowerCase();
+        const tag = card.querySelector('.user-tag').textContent.toLowerCase();
+        const match = name.includes(searchTerm) || discord.includes(searchTerm) || tag.includes(searchTerm);
+        card.style.display = match ? 'block' : 'none';
     });
 });
-
-function editUser(userId, user) {
-    const newRank = prompt(`${user.username} のランクを編集\n現在: ${user.currentRank || 'Unranked'}`, user.currentRank || '');
-    if (newRank === null) return;
-
-    updateUserRank(userId, newRank);
-}
-
-async function updateUserRank(userId, newRank) {
-    try {
-        const response = await fetch('/api/admin/user/update', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${sessionToken}`
-            },
-            body: JSON.stringify({ userId, currentRank: newRank })
-        });
-
-        if (!response.ok) throw new Error('更新失敗');
-
-        showToast('ユーザーランクを更新しました', 'success');
-        loadUserData();
-    } catch (err) {
-        console.error('ユーザー更新エラー:', err);
-        showToast('ユーザーの更新に失敗しました', 'error');
-    }
-}
-
-async function deleteUser(userId, username) {
-    if (!confirm(`本当に ${username} を削除しますか？`)) return;
-
-    try {
-        const response = await fetch('/api/admin/user/delete', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${sessionToken}`
-            },
-            body: JSON.stringify({ userId })
-        });
-
-        if (!response.ok) throw new Error('削除失敗');
-
-        showToast('ユーザーを削除しました', 'success');
-        loadUserData();
-    } catch (err) {
-        console.error('ユーザー削除エラー:', err);
-        showToast('ユーザーの削除に失敗しました', 'error');
-    }
-}
 
 // ===== JSON エディタ =====
 
@@ -318,9 +267,8 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
             discordUsername: document.getElementById('regDiscordUsername').value.trim(),
             username: document.getElementById('regValUsername').value.trim(),
             tag: document.getElementById('regValTag').value.trim(),
-            region: document.getElementById('regRegion').value,
-            platform: document.getElementById('regPlatform').value,
-            currentRank: document.getElementById('regCurrentRank').value
+            region: 'ap',
+            platform: document.getElementById('regPlatform').value
         };
 
         // バリデーション
@@ -341,11 +289,6 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
 
         if (!userData.tag || userData.tag.length === 0) {
             registerError.textContent = 'Valorant タグを入力してください';
-            return;
-        }
-
-        if (!userData.region) {
-            registerError.textContent = 'リージョンを選択してください';
             return;
         }
 
