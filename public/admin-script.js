@@ -2,6 +2,100 @@
 
 let sessionToken = null;
 let originalData = null;
+let autoRefreshInterval = null;
+let lastDataVersion = null;
+
+// ===== データの自動更新機能 =====
+
+// データ変更を検出して自動更新
+async function checkAndUpdateUserData() {
+    if (!sessionToken) return;
+    
+    try {
+        const response = await fetch('/api/admin/users', {
+            headers: {
+                'Authorization': `Bearer ${sessionToken}`
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                showLogin(true);
+                return;
+            }
+            return;
+        }
+
+        const users = await response.json();
+        const currentVersion = JSON.stringify(users);
+        
+        // データが変更された場合のみ更新
+        if (lastDataVersion !== currentVersion) {
+            lastDataVersion = currentVersion;
+            
+            // ユーザータブが表示されている場合のみ更新
+            if (document.querySelector('[data-tab="users"].active') || 
+                document.getElementById('users').classList.contains('active')) {
+                displayUsers(users);
+            }
+        }
+    } catch (err) {
+        console.error('データチェックエラー:', err);
+    }
+}
+
+// JSONデータの自動更新
+async function checkAndUpdateJsonData() {
+    if (!sessionToken) return;
+    
+    try {
+        const response = await fetch('/api/admin/data', {
+            headers: {
+                'Authorization': `Bearer ${sessionToken}`
+            }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const currentVersion = JSON.stringify(data);
+        
+        // JSONエディタタブが表示されている場合のみ更新
+        const jsonEditor = document.getElementById('jsonEditor');
+        if (document.getElementById('edit').classList.contains('active')) {
+            // ユーザーが編集中でない場合のみ更新
+            const currentEditorData = jsonEditor.value.trim();
+            if (currentEditorData === JSON.stringify(originalData, null, 2)) {
+                // ユーザーが編集していない場合
+                originalData = JSON.parse(JSON.stringify(data));
+                jsonEditor.value = JSON.stringify(data, null, 2);
+            }
+        }
+    } catch (err) {
+        console.error('JSONデータチェックエラー:', err);
+    }
+}
+
+// 自動更新を開始
+function startAutoRefresh() {
+    if (autoRefreshInterval) return;
+    
+    // 3秒ごとにデータをチェック
+    autoRefreshInterval = setInterval(async () => {
+        await Promise.all([
+            checkAndUpdateUserData(),
+            checkAndUpdateJsonData()
+        ]);
+    }, 3000);
+}
+
+// 自動更新を停止
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+}
 
 // ===== ログイン処理 =====
 
@@ -27,6 +121,9 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             loadUserData();
             loadJsonData();
             showToast('ログイン成功！', 'success');
+            
+            // 自動更新を開始
+            startAutoRefresh();
         } else {
             loginError.textContent = data.error || 'ログインに失敗しました';
             loginError.style.display = 'block';
@@ -42,6 +139,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
     sessionToken = null;
+    lastDataVersion = null;
+    stopAutoRefresh();
     showLogin(true);
     document.getElementById('loginForm').reset();
     document.getElementById('loginError').style.display = 'none';
@@ -173,11 +272,19 @@ async function loadJsonData() {
             }
         });
 
-        if (!response.ok) throw new Error('データ取得失敗');
+        if (!response.ok) {
+            if (response.status === 401) {
+                showLogin(true);
+                return;
+            }
+            throw new Error('データ取得失敗');
+        }
 
         const data = await response.json();
         originalData = JSON.parse(JSON.stringify(data));
+        lastDataVersion = JSON.stringify(data);
         document.getElementById('jsonEditor').value = JSON.stringify(data, null, 2);
+        document.getElementById('validationResult').classList.remove('show');
     } catch (err) {
         console.error('JSONデータ読み込みエラー:', err);
         showToast('JSONデータの読み込みに失敗しました', 'error');
@@ -189,9 +296,11 @@ document.getElementById('formatBtn').addEventListener('click', () => {
     try {
         const data = JSON.parse(document.getElementById('jsonEditor').value);
         document.getElementById('jsonEditor').value = JSON.stringify(data, null, 2);
-        showToast('JSONをフォーマットしました', 'success');
+        showToast('✓ JSONをフォーマットしました', 'success');
     } catch (err) {
-        showToast('無効なJSONです', 'error');
+        const jsonText = document.getElementById('jsonEditor').value;
+        const errorMsg = parseJsonError(jsonText, err);
+        showToast(`フォーマットエラー\n${errorMsg}`, 'error');
     }
 });
 
@@ -205,10 +314,13 @@ document.getElementById('validateBtn').addEventListener('click', () => {
         validationResult.textContent = '✓ JSONは有効です';
         validationResult.classList.remove('error');
         validationResult.classList.add('success', 'show');
+        showToast('✓ JSONは有効です', 'success');
     } catch (err) {
-        validationResult.textContent = `✗ エラー: ${err.message}`;
+        const errorMsg = parseJsonError(editor.value, err);
+        validationResult.innerHTML = `✗ エラー:<br><pre>${escapeHtml(errorMsg)}</pre>`;
         validationResult.classList.remove('success');
         validationResult.classList.add('error', 'show');
+        showToast('JSONに構文エラーがあります', 'error');
     }
 });
 
@@ -223,9 +335,28 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 
 // 保存
 document.getElementById('saveBtn').addEventListener('click', async () => {
+    const saveBtn = document.getElementById('saveBtn');
+    const originalBtnText = saveBtn.textContent;
+    
     try {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中...';
+        
         const jsonText = document.getElementById('jsonEditor').value;
-        const data = JSON.parse(jsonText);
+        
+        // JSONパース時のエラーをキャッチ
+        let data;
+        try {
+            data = JSON.parse(jsonText);
+        } catch (parseErr) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalBtnText;
+            
+            const errorMsg = parseJsonError(jsonText, parseErr);
+            // エラーダイアログを表示
+            alert(`JSONパースエラー\n\n${errorMsg}\n\nファイルを修正してから保存してください。`);
+            return;
+        }
 
         const response = await fetch('/api/admin/data/save', {
             method: 'POST',
@@ -236,20 +367,53 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
             body: JSON.stringify(data)
         });
 
-        if (!response.ok) throw new Error('保存失敗');
+        const result = await response.json();
 
+        if (!response.ok) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalBtnText;
+            
+            const errorMsg = result.details ? 
+                `${result.error}\n${result.details}` : 
+                result.error;
+            
+            showToast(errorMsg || 'データの保存に失敗しました', 'error');
+            return;
+        }
+
+        // 保存成功
         originalData = JSON.parse(JSON.stringify(data));
-        showToast('データを保存しました！', 'success');
+        lastDataVersion = JSON.stringify(data);
+        
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalBtnText;
+        
+        showToast('✓ データを保存しました！', 'success');
+        
+        // 自動更新を再起動
+        stopAutoRefresh();
+        startAutoRefresh();
     } catch (err) {
         console.error('データ保存エラー:', err);
-        showToast(err.message === 'Unexpected token' ? '無効なJSONです' : 'データの保存に失敗しました', 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalBtnText;
+        showToast('予期しないエラーが発生しました', 'error');
     }
 });
 
 // キャンセル
 document.getElementById('cancelBtn').addEventListener('click', () => {
-    if (confirm('編集を破棄しますか？')) {
-        loadJsonData();
+    const currentEditorData = document.getElementById('jsonEditor').value.trim();
+    const originalEditorData = JSON.stringify(originalData, null, 2);
+    
+    if (currentEditorData !== originalEditorData) {
+        if (confirm('編集を破棄しますか？')) {
+            document.getElementById('jsonEditor').value = originalEditorData;
+            document.getElementById('validationResult').classList.remove('show');
+            showToast('リセットしました', 'success');
+        }
+    } else {
+        showToast('変更がありません', 'info');
     }
 });
 
@@ -304,11 +468,22 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
         const result = await response.json();
 
         if (!response.ok) {
-            registerError.textContent = result.error || 'ユーザー登録に失敗しました';
+            // Valorantアカウント存在確認エラー
+            if (response.status === 404) {
+                registerError.innerHTML = `
+                    <strong>❌ Valorant アカウントが見つかりません</strong><br>
+                    <small>${escapeHtml(result.details || '')}</small><br>
+                    <small>ユーザー名とタグが正しいか確認してください</small>
+                `;
+            } else if (response.status === 409) {
+                registerError.textContent = '❌ このユーザーは既に登録されています';
+            } else {
+                registerError.textContent = result.error || 'ユーザー登録に失敗しました';
+            }
             return;
         }
 
-        showToast(`${userData.username} を登録しました！`, 'success');
+        showToast(`${userData.username} を登録しました！（ランク: ${result.currentRank}）`, 'success');
         document.getElementById('registerForm').reset();
         registerError.textContent = '';
         
@@ -394,13 +569,50 @@ document.getElementById('importBtn').addEventListener('click', async () => {
 
 // ===== ユーティリティ関数 =====
 
+// JSON パースエラーを詳しく表示
+function parseJsonError(jsonText, error) {
+    const match = error.message.match(/position (\d+)/);
+    if (!match) {
+        return error.message;
+    }
+    
+    const position = parseInt(match[1]);
+    const lines = jsonText.split('\n');
+    let currentPos = 0;
+    let lineNum = 1;
+    let columnNum = 1;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const lineLength = lines[i].length + 1; // +1 for newline
+        if (currentPos + lineLength > position) {
+            lineNum = i + 1;
+            columnNum = position - currentPos + 1;
+            
+            // エラー位置を視覚的に表示
+            const problemLine = lines[i];
+            const pointer = ' '.repeat(columnNum - 1) + '^';
+            
+            return `エラー位置: ${lineNum} 行 ${columnNum} 列\n` +
+                   `${error.message}\n\n` +
+                   `問題がある行:\n${problemLine}\n${pointer}`;
+        }
+        currentPos += lineLength;
+    }
+    
+    return error.message;
+}
+
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.className = `toast show ${type}`;
+    
+    // メッセージタイプに応じて表示時間を調整
+    const duration = type === 'error' ? 4000 : type === 'info' ? 2000 : 3000;
+    
     setTimeout(() => {
         toast.classList.remove('show');
-    }, 3000);
+    }, duration);
 }
 
 function formatDate(dateString) {

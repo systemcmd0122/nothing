@@ -3,16 +3,19 @@
 const crypto = require('crypto');
 const Logger = require('./logger');
 
-// 環境変数から管理者パスワードを設定（ハッシュ化）
-const ADMIN_PASSWORD_HASH = hashPassword('taisuke0122');
+// 環境変数から管理者パスワードを取得
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'taisuke0122';
 
 // パスワードをハッシュ化
 function hashPassword(password) {
     return crypto
         .createHash('sha256')
-        .update(password + process.env.ADMIN_SALT || 'default_salt_key')
+        .update(password)
         .digest('hex');
 }
+
+// 管理者パスワードハッシュを生成
+const ADMIN_PASSWORD_HASH = hashPassword(ADMIN_PASSWORD);
 
 // パスワードを検証
 function verifyPassword(password) {
@@ -67,13 +70,19 @@ function adminAuthMiddleware(req, res, next) {
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: '認証が必要です' });
+        return res.status(401).json({ 
+            success: false,
+            error: '認証が必要です' 
+        });
     }
     
     const token = authHeader.substring(7);
     
     if (!validateToken(token)) {
-        return res.status(401).json({ error: 'トークンが無効です' });
+        return res.status(401).json({ 
+            success: false,
+            error: 'トークンが無効です' 
+        });
     }
     
     next();

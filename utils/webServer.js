@@ -209,19 +209,41 @@ app.post('/api/admin/data/save', adminAuthMiddleware, (req, res) => {
         
         // データ検証
         if (typeof newData !== 'object' || newData === null) {
-            return res.status(400).json({ error: '無効なデータ形式です' });
+            return res.status(400).json({ 
+                success: false,
+                error: '無効なデータ形式です',
+                details: 'データはオブジェクトである必要があります'
+            });
         }
         
+        // 各ユーザーデータの検証
+        for (const [key, value] of Object.entries(newData)) {
+            if (typeof value !== 'object' || value === null) {
+                return res.status(400).json({
+                    success: false,
+                    error: `無効なユーザーデータ: ${key}`,
+                    details: 'ユーザーデータはオブジェクトである必要があります'
+                });
+            }
+        }
+        
+        // データ保存
         saveUserData(newData);
+        
         Logger.success('管理者がJSONデータを保存しました', 'ADMIN');
         
         res.json({
             success: true,
-            message: 'データを保存しました'
+            message: 'データを保存しました',
+            timestamp: new Date().toISOString()
         });
     } catch (err) {
         Logger.error('管理者: JSONデータ保存エラー', 'ADMIN', err);
-        res.status(500).json({ error: 'データの保存に失敗しました' });
+        res.status(500).json({ 
+            success: false,
+            error: 'データの保存に失敗しました',
+            details: err.message
+        });
     }
 });
 
@@ -231,13 +253,19 @@ app.post('/api/admin/user/update', adminAuthMiddleware, (req, res) => {
         const { userId, currentRank } = req.body;
         
         if (!userId || !currentRank) {
-            return res.status(400).json({ error: 'userId と currentRank が必要です' });
+            return res.status(400).json({ 
+                success: false,
+                error: 'userId と currentRank が必要です' 
+            });
         }
         
         const userData = loadUserData();
         
         if (!userData[userId]) {
-            return res.status(404).json({ error: 'ユーザーが見つかりません' });
+            return res.status(404).json({ 
+                success: false,
+                error: 'ユーザーが見つかりません' 
+            });
         }
         
         userData[userId].currentRank = currentRank;
@@ -248,11 +276,18 @@ app.post('/api/admin/user/update', adminAuthMiddleware, (req, res) => {
         
         res.json({
             success: true,
-            message: 'ユーザーを更新しました'
+            message: 'ユーザーを更新しました',
+            userId: userId,
+            currentRank: currentRank,
+            timestamp: new Date().toISOString()
         });
     } catch (err) {
         Logger.error('管理者: ユーザー更新エラー', 'ADMIN', err);
-        res.status(500).json({ error: 'ユーザーの更新に失敗しました' });
+        res.status(500).json({ 
+            success: false,
+            error: 'ユーザーの更新に失敗しました',
+            details: err.message
+        });
     }
 });
 
@@ -262,13 +297,19 @@ app.delete('/api/admin/user/delete', adminAuthMiddleware, (req, res) => {
         const { userId } = req.body;
         
         if (!userId) {
-            return res.status(400).json({ error: 'userId が必要です' });
+            return res.status(400).json({ 
+                success: false,
+                error: 'userId が必要です' 
+            });
         }
         
         const userData = loadUserData();
         
         if (!userData[userId]) {
-            return res.status(404).json({ error: 'ユーザーが見つかりません' });
+            return res.status(404).json({ 
+                success: false,
+                error: 'ユーザーが見つかりません' 
+            });
         }
         
         const username = userData[userId].username;
@@ -279,16 +320,22 @@ app.delete('/api/admin/user/delete', adminAuthMiddleware, (req, res) => {
         
         res.json({
             success: true,
-            message: 'ユーザーを削除しました'
+            message: 'ユーザーを削除しました',
+            username: username,
+            timestamp: new Date().toISOString()
         });
     } catch (err) {
         Logger.error('管理者: ユーザー削除エラー', 'ADMIN', err);
-        res.status(500).json({ error: 'ユーザーの削除に失敗しました' });
+        res.status(500).json({ 
+            success: false,
+            error: 'ユーザーの削除に失敗しました',
+            details: err.message
+        });
     }
 });
 
 // ユーザー登録（管理者用）
-app.post('/api/admin/user/register', adminAuthMiddleware, (req, res) => {
+app.post('/api/admin/user/register', adminAuthMiddleware, async (req, res) => {
     try {
         const { discordId, discordUsername, username, tag, platform } = req.body;
         
@@ -308,6 +355,24 @@ app.post('/api/admin/user/register', adminAuthMiddleware, (req, res) => {
             return res.status(409).json({ error: 'このユーザーは既に登録されています' });
         }
         
+        // ─────────────────────────────────────────
+        // Valorant アカウントが実在するか確認
+        // ─────────────────────────────────────────
+        const rankText = await getValorantRank(username, tag, 'ap', platform || 'pc');
+        
+        if (!rankText) {
+            return res.status(404).json({ 
+                error: '指定された Valorant アカウントが見つかりません。ユーザー名とタグが正しいか確認してください。',
+                details: `${username}#${tag} は存在しないようです`
+            });
+        }
+        
+        // ─────────────────────────────────────────
+        // 実在が確認できたので登録処理へ
+        // ─────────────────────────────────────────
+        const { extractRankName } = require('./rankUtils');
+        const currentRank = extractRankName(rankText);
+        
         // 新しいユーザーを登録
         userData[discordId] = {
             discordId,
@@ -316,7 +381,7 @@ app.post('/api/admin/user/register', adminAuthMiddleware, (req, res) => {
             tag,
             region: 'ap',
             platform: platform || 'pc',
-            currentRank: 'Unranked',
+            currentRank: currentRank || 'Unranked',
             lastUpdated: new Date().toISOString()
         };
         
@@ -327,7 +392,8 @@ app.post('/api/admin/user/register', adminAuthMiddleware, (req, res) => {
         res.status(201).json({
             success: true,
             message: 'ユーザーを登録しました',
-            userId: discordId
+            userId: discordId,
+            currentRank: currentRank || 'Unranked'
         });
     } catch (err) {
         Logger.error('管理者: ユーザー登録エラー', 'ADMIN', err);
