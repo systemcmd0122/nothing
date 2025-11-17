@@ -1,193 +1,254 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+import { Client, GatewayIntentBits, REST, Routes, ActivityType } from "discord.js";
+import dotenv from "dotenv";
+import http from "http";
+import registerCommand from "./src/commands/register.js";
+import rankCommand from "./src/commands/rank.js";
+import recordCommand from "./src/commands/record.js";
+import myaccountCommand from "./src/commands/myaccount.js";
+import setupboardCommand from "./src/commands/setupboard.js";
+import adminregisterCommand from "./src/commands/adminregister.js";
+import deleteRankRolesCommand from "./src/commands/deleteRankRoles.js";
+import pickCommand from "./src/commands/pick.js";
+import setupAgentBoardCommand from "./src/commands/setupAgentBoard.js";
+import { handleModalSubmit } from "./src/commands/modalHandler.js";
+import { handleBoardButton } from "./src/commands/boardButtonHandler.js";
+import { handleAgentBoardButton } from "./src/services/agentBoardHandler.js";
+import { syncAllUserRanks, initializeRankRoles } from "./src/services/rankSync.js";
+import "./src/config/firebase.js"; // Initialize Firebase
 
-// ロガーのインポート
-const Logger = require('./utils/logger');
+dotenv.config();
 
-// 環境変数から設定を取得
-const TOKEN = process.env.DISCORD_TOKEN;
-const UPDATE_INTERVAL = parseInt(process.env.UPDATE_INTERVAL) || 60000;
+// Keep-Alive機能（Koyeb無料枠でのスリープモード防止）
+function startKeepAlive() {
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("Bot is running");
+  });
 
-// トークン確認
-if (!TOKEN) {
-    Logger.error('DISCORD_TOKEN が .env に設定されていません', 'CONFIG');
-    process.exit(1);
-}
+  const port = process.env.PORT || 3000;
+  server.listen(port, () => {
+    console.log(`[OK] Keep-Alive server running on port ${port}`);
+  });
 
-// ユーティリティのインポート
-const { createAllRankRoles } = require('./utils/roleManager');
-const { autoUpdateRanks } = require('./utils/rankUpdater');
-const { handleRegisterButton, handleRegisterModal } = require('./utils/buttonHandler');
-const { handleViewMyRankButton, handleViewMyHistoryButton } = require('./utils/statsButtonHandler');
-const { setUpdatingStatus, setPlayingStatus } = require('./utils/statusManager');
-const { startWebServer } = require('./utils/webServer');
-const { startKeepAlive } = require('./utils/keepAlive');
-
-// クライアントの作成
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
-    ]
-});
-
-// コマンドの動的読み込み
-client.commands = new Map();
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-Logger.divider('コマンド読み込み');
-for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
-    client.commands.set(command.data.name, command);
-    Logger.success(`コマンド読み込み: ${command.data.name}`, 'COMMAND');
-}
-Logger.info(`合計 ${client.commands.size} 個のコマンドが読み込まれました`, 'COMMAND');
-
-
-// Bot起動時
-client.once('ready', async () => {
-    Logger.divider('🤖 Botログイン');
-    Logger.success(`ログイン成功: ${client.user.tag}`, 'BOT');
-    Logger.status('ON', `アクティブサーバー数: ${client.guilds.cache.size}`);
-    
-    // 各サーバーでランクロールを作成
-    Logger.info('ランクロール作成を開始中...', 'ROLES');
-    for (const guild of client.guilds.cache.values()) {
-        await createAllRankRoles(guild);
-    }
-    
-    // スラッシュコマンドの登録
-    const commands = Array.from(client.commands.values()).map(cmd => cmd.data);
-    
+  // 定期的に自身にHTTPリクエストを送信してスリープモードを防止
+  setInterval(async () => {
     try {
-        Logger.info('スラッシュコマンドを登録中...', 'COMMANDS');
-        await client.application.commands.set(commands);
-        Logger.success('スラッシュコマンド登録完了！', 'COMMANDS');
-    } catch (err) {
-        Logger.error('コマンド登録エラー', 'COMMANDS', err);
+      const hostname = process.env.KOYEB_DOMAIN || "localhost";
+      const url = `http://${hostname}:${port}`;
+      
+      const request = http.get(url, (response) => {
+        // リクエスト成功
+        if (response.statusCode === 200) {
+          console.log("[OK] Keep-Alive ping sent successfully");
+        }
+      });
+
+      request.on("error", (err) => {
+        // ローカル環境ではエラーが発生する可能性があるため、警告レベルでログ
+        console.warn("[WARN] Keep-Alive ping error (expected in local environment):", err.message);
+      });
+
+      request.setTimeout(5000);
+    } catch (error) {
+      console.warn("[WARN] Keep-Alive error:", error.message);
     }
-    
-    // ランク自動更新スケジューラーを開始
-    Logger.success(`ランク自動更新スケジューラーを開始（${UPDATE_INTERVAL}ms）`, 'SCHEDULER');
-    
-    // 初期ステータスを設定
-    setPlayingStatus(client);
-    
-    // Expressウェブサーバーの起動
-    startWebServer();
-    
-    // Keep-Alive機能を開始（Koyeb無料枠でのスリープモード防止）
-    startKeepAlive();
-    
-    setInterval(() => autoUpdateRanks(client, setUpdatingStatus, setPlayingStatus), UPDATE_INTERVAL);
-    
-    // 起動時に一度実行
-    setTimeout(() => autoUpdateRanks(client, setUpdatingStatus, setPlayingStatus), 5000);
-    
-    Logger.divider();
+  }, 300000); // 5分ごとにKeep-Alive ping
+}
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages,
+  ],
 });
 
-// インタラクション処理
-client.on('interactionCreate', async interaction => {
-    // スラッシュコマンド処理
+const commands = [registerCommand, rankCommand, recordCommand, myaccountCommand, setupboardCommand, adminregisterCommand, deleteRankRolesCommand, pickCommand, setupAgentBoardCommand];
+
+// Register slash commands
+async function registerSlashCommands() {
+  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    console.log(">>> Registering slash commands...");
+
+    const commandData = commands.map((cmd) => cmd.data.toJSON());
+
+    // Register globally
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commandData });
+
+    console.log(`[OK] Successfully registered ${commandData.length} slash commands!`);
+  } catch (error) {
+    console.error("Error registering slash commands:", error);
+  }
+}
+
+client.once("clientReady", async () => {
+  console.log(`Bot logged in as ${client.user.tag}`);
+
+  // Keep-Alive機能を開始（Koyeb無料枠でのスリープモード防止）
+  startKeepAlive();
+
+  // Register commands once bot is ready
+  await registerSlashCommands();
+
+  // Get the main guild (assuming bot is in one guild, or use DISCORD_GUILD_ID env var)
+  let targetGuild;
+  if (process.env.DISCORD_GUILD_ID) {
+    targetGuild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID);
+  } else {
+    // Use the first guild the bot is in
+    targetGuild = client.guilds.cache.first();
+  }
+
+  if (!targetGuild) {
+    console.warn("No guild found for rank sync. Skipping automatic sync.");
+    client.user.setActivity("Error: Guild not found", {
+      type: ActivityType.Custom,
+    });
+  } else {
+    console.log(`Rank sync target guild: ${targetGuild.name}`);
+
+    // Initialize all rank roles
+    try {
+      await initializeRankRoles(targetGuild);
+    } catch (error) {
+      console.error("Rank roles initialization failed:", error);
+    }
+
+    // Initial sync
+    try {
+      await syncAllUserRanks(targetGuild, client);
+    } catch (error) {
+      console.error("Initial rank sync failed:", error);
+    }
+
+    // Schedule rank sync every 5 minutes (300000ms)
+    let nextSyncTime = Date.now() + 300000;
+
+    // Update activity with countdown
+    const updateActivity = () => {
+      const now = Date.now();
+      const timeUntilSync = Math.max(0, nextSyncTime - now);
+      const secondsLeft = Math.ceil(timeUntilSync / 1000);
+
+      if (secondsLeft > 0) {
+        const minutes = Math.floor(secondsLeft / 60);
+        const seconds = secondsLeft % 60;
+        const timeString =
+          minutes > 0
+            ? `${minutes}m ${seconds}s後に更新`
+            : `${seconds}s後に更新`;
+
+        client.user.setActivity(timeString, {
+          type: ActivityType.Custom,
+        });
+      }
+    };
+
+    // Update activity every second
+    setInterval(updateActivity, 1000);
+
+    // Initial activity update
+    updateActivity();
+
+    // Console log for every 30 seconds
+    setInterval(() => {
+      const now = Date.now();
+      const timeUntilSync = Math.max(0, nextSyncTime - now);
+      const secondsLeft = Math.ceil(timeUntilSync / 1000);
+
+      if (secondsLeft > 0 && secondsLeft % 30 === 0) {
+        console.log(`Next rank sync in ${secondsLeft} seconds...`);
+      }
+    }, 5000); // Check every 5 seconds
+
+    // Scheduled sync
+    setInterval(async () => {
+      try {
+        console.log("\n" + "=".repeat(60));
+        console.log("Rank sync started");
+        console.log("=".repeat(60));
+        
+        await syncAllUserRanks(targetGuild, client);
+        
+        nextSyncTime = Date.now() + 300000;
+        console.log("=".repeat(60));
+        console.log("Rank sync completed");
+        console.log("=".repeat(60) + "\n");
+
+        // Update activity after sync
+        updateActivity();
+      } catch (error) {
+        console.error("Rank sync error", error);
+      }
+    }, 300000); // 5 minutes
+  }
+});
+
+// Handle interactions
+client.on("interactionCreate", async (interaction) => {
+  try {
+    // Handle slash commands
     if (interaction.isChatInputCommand()) {
-        const command = client.commands.get(interaction.commandName);
-        
-        if (!command) {
-            Logger.warn(`コマンドが見つかりません: ${interaction.commandName}`, 'COMMAND');
-            return;
-        }
-        
-        try {
-            Logger.debug(`コマンド実行: /${interaction.commandName} by ${interaction.user.tag}`, 'COMMAND');
-            await command.execute(interaction);
-            Logger.success(`コマンド実行完了: /${interaction.commandName}`, 'COMMAND');
-        } catch (err) {
-            Logger.error(`コマンド実行エラー: /${interaction.commandName}`, 'COMMAND', err);
-            
-            const errorMessage = {
-                content: '❌ コマンド実行中にエラーが発生しました。',
-                ephemeral: true
-            };
-            
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp(errorMessage);
-            } else {
-                await interaction.reply(errorMessage);
-            }
-        }
+      const command = commands.find((cmd) => cmd.data.name === interaction.commandName);
+      
+      if (!command) {
+        return interaction.reply({
+          content: "コマンドが見つかりません。",
+          flags: 64, // Ephemeral flag
+        });
+      }
+
+      await command.execute(interaction);
     }
+    // Handle button clicks
+    else if (interaction.isButton()) {
+      // Check if it's an agent board button
+      if (interaction.customId.startsWith("agent_pick_")) {
+        await handleAgentBoardButton(interaction);
+      } else {
+        await handleBoardButton(interaction);
+      }
+    }
+    // Handle modals
+    else if (interaction.isModalSubmit()) {
+      await handleModalSubmit(interaction);
+    }
+  } catch (error) {
+    console.error("Error handling interaction:", error);
     
-    // ボタンクリック処理
-    if (interaction.isButton()) {
-        if (interaction.customId === 'register_pc') {
-            try {
-                await handleRegisterButton(interaction, 'pc');
-            } catch (err) {
-                console.error('PC登録ボタン処理エラー:', err);
-                await interaction.reply({
-                    content: '❌ エラーが発生しました。',
-                    ephemeral: true
-                });
-            }
-        } else if (interaction.customId === 'register_console') {
-            try {
-                await handleRegisterButton(interaction, 'console');
-            } catch (err) {
-                console.error('コンソール登録ボタン処理エラー:', err);
-                await interaction.reply({
-                    content: '❌ エラーが発生しました。',
-                    ephemeral: true
-                });
-            }
-        } else if (interaction.customId === 'view_my_rank') {
-            try {
-                await handleViewMyRankButton(interaction);
-            } catch (err) {
-                console.error('ランク表示ボタン処理エラー:', err);
-                await interaction.reply({
-                    content: '❌ エラーが発生しました。',
-                    ephemeral: true
-                });
-            }
-        } else if (interaction.customId === 'view_my_history') {
-            try {
-                await handleViewMyHistoryButton(interaction);
-            } catch (err) {
-                console.error('マッチ履歴表示ボタン処理エラー:', err);
-                await interaction.reply({
-                    content: '❌ エラーが発生しました。',
-                    ephemeral: true
-                });
-            }
-        }
+    // Try to respond only if not already replied or deferred
+    try {
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: "[ERROR] An error occurred while executing the command.",
+          flags: 64, // Ephemeral flag
+        });
+      } else if (interaction.deferred && !interaction.replied) {
+        await interaction.editReply({
+          content: "[ERROR] An error occurred while executing the command.",
+        });
+      }
+    } catch (replyError) {
+      console.error("Failed to send error response:", replyError);
     }
-    
-    // モーダル送信処理
-    if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith('register_modal_')) {
-            try {
-                const platform = interaction.customId.split('_')[2];
-                Logger.debug(`登録モーダル送信: ${platform}版 by ${interaction.user.tag}`, 'MODAL');
-                await handleRegisterModal(interaction);
-            } catch (err) {
-                Logger.error('モーダル処理エラー', 'MODAL', err);
-                await interaction.reply({
-                    content: '❌ 登録処理中にエラーが発生しました。',
-                    ephemeral: true
-                });
-            }
-        }
-    }
+  }
 });
 
-// Botのログイン
-Logger.divider('🚀 Botを起動中');
-Logger.info('Discordに接続中...', 'BOT');
-client.login(TOKEN);
+// Error handling
+client.on("error", (error) => {
+  console.error("Discord client error:", error);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+// Login to Discord
+client.login(process.env.DISCORD_TOKEN);
