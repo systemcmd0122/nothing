@@ -116,19 +116,21 @@ client.once("clientReady", async () => {
   } else {
     console.log(`Rank sync target guild: ${targetGuild.name}`);
 
-    // Initialize all rank roles
-    try {
-      await initializeRankRoles(targetGuild);
-    } catch (error) {
-      console.error("Rank roles initialization failed:", error);
-    }
+    // Initialize all rank roles (バックグラウンドで実行)
+    (async () => {
+      try {
+        await initializeRankRoles(targetGuild);
+      } catch (error) {
+        console.error("Rank roles initialization failed:", error);
+      }
 
-    // Initial sync
-    try {
-      await syncAllUserRanks(targetGuild, client);
-    } catch (error) {
-      console.error("Initial rank sync failed:", error);
-    }
+      // Initial sync after role initialization
+      try {
+        await syncAllUserRanks(targetGuild, client);
+      } catch (error) {
+        console.error("Initial rank sync failed:", error);
+      }
+    })();
 
     // Schedule rank sync every 5 minutes (300000ms)
     let nextSyncTime = Date.now() + 300000;
