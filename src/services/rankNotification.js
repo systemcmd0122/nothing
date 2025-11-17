@@ -1,85 +1,7 @@
 import { db } from "../config/firebase.js";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc,
-  setDoc,
-} from "firebase/firestore";
 import { EmbedBuilder } from "discord.js";
 
 const NOTIFICATION_CHANNEL_ID = "1438781172997165147";
-
-/**
- * Get the last recorded rank for a user
- * @param {string} userId - Discord user ID
- * @returns {Promise<Object|null>} - Last rank info or null
- */
-async function getLastRecordedRank(userId) {
-  try {
-    const q = query(
-      collection(db, "rank_history"),
-      where("discordUserId", "==", userId)
-    );
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      return null;
-    }
-
-    // Get the most recent record (last in the collection)
-    const docs = querySnapshot.docs;
-    return docs[docs.length - 1].data();
-  } catch (error) {
-    console.error("[ERROR] Error getting last recorded rank:", error);
-    return null;
-  }
-}
-
-/**
- * Save current rank to history
- * @param {string} userId - Discord user ID
- * @param {string} username - Valorant username
- * @param {string} tag - Valorant tag
- * @param {string} rankName - Rank name (e.g., "Bronze")
- * @param {string} division - Division number (1-3)
- * @returns {Promise<void>}
- */
-async function saveRankToHistory(userId, username, tag, rankName, division) {
-  try {
-    const historyRef = collection(db, "rank_history");
-    const q = query(
-      historyRef,
-      where("discordUserId", "==", userId)
-    );
-    const querySnapshot = await getDocs(q);
-
-    const rankData = {
-      discordUserId: userId,
-      username,
-      tag,
-      rankName,
-      division,
-      updatedAt: new Date(),
-    };
-
-    if (!querySnapshot.empty) {
-      // Update existing record
-      const docId = querySnapshot.docs[0].id;
-      await updateDoc(doc(db, "rank_history", docId), rankData);
-    } else {
-      // Create new record
-      await setDoc(doc(historyRef), {
-        ...rankData,
-        createdAt: new Date(),
-      });
-    }
-  } catch (error) {
-    console.error("Error saving rank to history:", error);
-  }
-}
 
 /**
  * Get rank order for comparison
@@ -281,20 +203,8 @@ export async function checkAndNotifyRankChange(
   currentDivision
 ) {
   try {
-    // Get last recorded rank
-    const lastRank = await getLastRecordedRank(account.discordUserId);
-
-    // Compare ranks
-    const changeInfo = compareRanks(lastRank, currentRankName, currentDivision);
-
-    // Save current rank to history
-    await saveRankToHistory(
-      account.discordUserId,
-      account.username,
-      account.tag,
-      currentRankName,
-      currentDivision
-    );
+    // Compare ranks (no previous rank record)
+    const changeInfo = compareRanks(null, currentRankName, currentDivision);
 
     if (!changeInfo.hasChanged) {
       return false;

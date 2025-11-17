@@ -2,7 +2,7 @@ import { getAllRegisteredAccounts, getValorantRank } from "./valorant.js";
 import { checkAndNotifyRankChange } from "./rankNotification.js";
 import { updateRankInAccount } from "./rankUpdate.js";
 import { db } from "../config/firebase.js";
-import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 
 // ランク情報とロール対応 - すべてのランクに1-3のディビジョンを含む
 const RANK_INFO = {
@@ -66,39 +66,6 @@ export function getRolePosition(rankName) {
  */
 function isRankRole(roleName) {
   return Object.keys(RANK_INFO).some((rank) => roleName.includes(rank));
-}
-
-/**
- * Save rank update to Firebase
- * @param {string} userId - Discord user ID
- * @param {string} username - Valorant username
- * @param {string} tag - Valorant tag
- * @param {string} rankName - Current rank name
- * @param {string} division - Current division
- * @param {string} previousRank - Previous rank (optional)
- * @param {string} previousDivision - Previous division (optional)
- * @returns {Promise<void>}
- */
-async function saveRankUpdate(userId, username, tag, rankName, division, previousRank = null, previousDivision = null) {
-  try {
-    const rankUpdateData = {
-      discordUserId: userId,
-      username: username,
-      tag: tag,
-      currentRank: rankName,
-      currentDivision: division,
-      previousRank: previousRank,
-      previousDivision: previousDivision,
-      timestamp: serverTimestamp(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Add to rank_history collection
-    await addDoc(collection(db, "rank_history"), rankUpdateData);
-    console.log(`[OK] Saved rank update: ${username}#${tag} - ${rankName}${division}`);
-  } catch (error) {
-    console.error(`[ERROR] Failed to save rank update: ${error.message}`);
-  }
 }
 
 /**
@@ -335,10 +302,6 @@ export async function syncAllUserRanks(guild, client = null) {
             
             // Update rank in valorant_accounts
             await updateRankInAccount(account.discordUserId, "Unranked", "");
-            
-            // Save rank update to Firebase
-            await saveRankUpdate(account.discordUserId, account.username, account.tag, "Unranked", "");
-            
             results.updated++;
           }
 
@@ -435,11 +398,8 @@ export async function syncAllUserRanks(guild, client = null) {
           console.log(`▶ ${member.user.username} already has ${roleName}`);
         }
 
-        // Update rank in valorant_accounts (always save to track rank changes)
+        // Update rank in valorant_accounts
         await updateRankInAccount(account.discordUserId, rankName, division);
-
-        // Save rank update to Firebase (always save to track rank changes)
-        await saveRankUpdate(account.discordUserId, account.username, account.tag, rankName, division);
 
         // Check and notify rank changes
         if (client) {
