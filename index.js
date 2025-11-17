@@ -20,32 +20,37 @@ dotenv.config();
 
 // Keep-Alive機能（Koyeb無料枠でのスリープモード防止）
 function startKeepAlive() {
-  const server = http.createServer((req, res) => {
+  const server = http.createServer((_req, res) => {
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("Bot is running");
   });
 
   const port = process.env.PORT || 3000;
-  server.listen(port, () => {
-    console.log(`[OK] Keep-Alive server running on port ${port}`);
+  
+  return new Promise((resolve) => {
+    server.listen(port, "0.0.0.0", () => {
+      console.log(`[OK] Keep-Alive server running on port ${port}`);
+      resolve();
+    });
   });
+}
 
-  // 定期的に自身にHTTPリクエストを送信してスリープモードを防止
+// 定期的に自身にHTTPリクエストを送信してスリープモードを防止
+function startKeepAlivePing() {
   setInterval(async () => {
     try {
+      const port = process.env.PORT || 3000;
       const hostname = process.env.KOYEB_DOMAIN || "localhost";
       const url = `http://${hostname}:${port}`;
       
       const request = http.get(url, (response) => {
-        // リクエスト成功
         if (response.statusCode === 200) {
           console.log("[OK] Keep-Alive ping sent successfully");
         }
       });
 
       request.on("error", (err) => {
-        // ローカル環境ではエラーが発生する可能性があるため、警告レベルでログ
-        console.warn("[WARN] Keep-Alive ping error (expected in local environment):", err.message);
+        console.warn("[WARN] Keep-Alive ping error:", err.message);
       });
 
       request.setTimeout(5000);
@@ -88,7 +93,8 @@ client.once("clientReady", async () => {
   console.log(`Bot logged in as ${client.user.tag}`);
 
   // Keep-Alive機能を開始（Koyeb無料枠でのスリープモード防止）
-  startKeepAlive();
+  await startKeepAlive();
+  startKeepAlivePing();
 
   // Register commands once bot is ready
   await registerSlashCommands();
