@@ -1,6 +1,11 @@
 import { Client, GatewayIntentBits, REST, Routes, ActivityType } from "discord.js";
 import dotenv from "dotenv";
 import http from "http";
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+import "./src/utils/logCapture.js"; // ログキャプチャを有効化
+import { getLogs } from "./src/utils/logCapture.js";
 import registerCommand from "./src/commands/register.js";
 import rankCommand from "./src/commands/rank.js";
 import recordCommand from "./src/commands/record.js";
@@ -14,22 +19,84 @@ import { handleModalSubmit } from "./src/commands/modalHandler.js";
 import { handleBoardButton } from "./src/commands/boardButtonHandler.js";
 import { handleAgentBoardButton } from "./src/services/agentBoardHandler.js";
 import { syncAllUserRanks, initializeRankRoles } from "./src/services/rankSync.js";
+import { getRandomAgent, getRandomAgentByRole, getAllAgents } from "./src/services/agents.js";
 import "./src/config/firebase.js"; // Initialize Firebase
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+app.use(express.json());
+
+// Static files
+app.use(express.static(path.join(__dirname, "public")));
+
+// Dashboard ページ
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Random Agent ページ
+app.get("/random", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "random.html"));
+});
+
+// API: コンソールログを取得
+app.get("/api/logs", (req, res) => {
+  const limit = parseInt(req.query.limit) || 100;
+  const logs = getLogs(limit);
+  res.json({ logs });
+});
+
+// API: ランダムエージェントを取得
+app.get("/api/random-agent", (req, res) => {
+  try {
+    const role = req.query.role || "random";
+    
+    let selectedAgent;
+    if (role === "random") {
+      selectedAgent = getRandomAgent();
+    } else {
+      selectedAgent = getRandomAgentByRole(role);
+    }
+
+    if (!selectedAgent) {
+      return res.status(404).json({ error: "エージェントが見つかりません" });
+    }
+
+    res.json({
+      agent: selectedAgent,
+      imageUrl: `/agents/${selectedAgent.image}`,
+    });
+  } catch (error) {
+    console.error("Error getting random agent:", error);
+    res.status(500).json({ error: "エージェント取得エラー" });
+  }
+});
+
+// API: すべてのエージェントを取得
+app.get("/api/agents", (req, res) => {
+  try {
+    const agents = getAllAgents();
+    res.json({ agents });
+  } catch (error) {
+    console.error("Error getting agents:", error);
+    res.status(500).json({ error: "エージェント取得エラー" });
+  }
+});
+
+// Agentイメージサーバー
+app.use("/agents", express.static(path.join(__dirname, "agents")));
+
 // Keep-Alive機能（Koyeb無料枠でのスリープモード防止）
 function startKeepAlive() {
-  const server = http.createServer((_req, res) => {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("Bot is running");
-  });
-
   const port = process.env.PORT || 3000;
   
   return new Promise((resolve) => {
-    server.listen(port, "0.0.0.0", () => {
-      console.log(`[OK] Keep-Alive server running on port ${port}`);
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`[OK] Express server running on port ${port}`);
       resolve();
     });
   });

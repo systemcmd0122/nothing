@@ -207,12 +207,18 @@ export const AGENTS = {
  * @returns {Array} すべてのエージェント
  */
 export function getAllAgents() {
-  return [
+  const allAgents = [
     ...AGENTS.duelist,
     ...AGENTS.sentinel,
     ...AGENTS.initiator,
     ...AGENTS.controller,
   ];
+  
+  // 各エージェントに id フィールドを追加（name を使用）
+  return allAgents.map((agent, index) => ({
+    ...agent,
+    id: agent.name || `agent_${index}`,
+  }));
 }
 
 /**
