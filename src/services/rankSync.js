@@ -290,12 +290,14 @@ export async function syncAllUserRanks(guild, client = null) {
             try {
               await member.roles.remove(oldRole, "Rank update");
               console.log(`>>> Removed old role: ${oldRole.name}`);
+              await new Promise((resolve) => setTimeout(resolve, 100));
             } catch (error) {
               console.warn(`Failed to remove role ${oldRole.name}:`, error.message);
             }
           }
 
-          // Assign Unranked role
+          // Assign Unranked role - refetch member to ensure role cache is updated
+          await member.roles.fetch().catch(() => null);
           if (!member.roles.cache.has(unrankedRole.id)) {
             await member.roles.add(unrankedRole, "User is unranked");
             console.log(`[OK] Added Unranked role to ${member.user.username}`);
@@ -380,7 +382,7 @@ export async function syncAllUserRanks(guild, client = null) {
           try {
             await member.roles.remove(oldRole, "Rank update");
             console.log(`>>> Removed old role: ${oldRole.name}`);
-            await new Promise((resolve) => setTimeout(resolve, 50));
+            await new Promise((resolve) => setTimeout(resolve, 100));
           } catch (error) {
             console.warn(
               `▶ Failed to remove role ${oldRole.name}:`,
@@ -389,13 +391,20 @@ export async function syncAllUserRanks(guild, client = null) {
           }
         }
 
-        // Assign new rank role
+        // Assign new rank role - refetch member to ensure role cache is updated
+        await member.roles.fetch().catch(() => null);
         if (!member.roles.cache.has(role.id)) {
           await member.roles.add(role, `Rank sync: ${rankName}`);
           console.log(`[OK] Added role ${roleName} to ${member.user.username}`);
           results.updated++;
         } else {
-          console.log(`▶ ${member.user.username} already has ${roleName}`);
+          // ロール削除があった場合は更新カウントに含める
+          if (removedOldRoles) {
+            results.updated++;
+            console.log(`[OK] Updated role to ${roleName} for ${member.user.username}`);
+          } else {
+            console.log(`▶ ${member.user.username} already has ${roleName}`);
+          }
         }
 
         // Update rank in valorant_accounts
