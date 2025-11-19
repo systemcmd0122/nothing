@@ -38,11 +38,6 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Random Agent ページ
-app.get("/random", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "random.html"));
-});
-
 // API: コンソールログを取得
 app.get("/api/logs", (req, res) => {
   const limit = parseInt(req.query.limit) || 100;

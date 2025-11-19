@@ -296,8 +296,7 @@ export async function syncAllUserRanks(guild, client = null) {
             }
           }
 
-          // Assign Unranked role - refetch member to ensure role cache is updated
-          await member.roles.fetch().catch(() => null);
+          // Assign Unranked role
           if (!member.roles.cache.has(unrankedRole.id)) {
             await member.roles.add(unrankedRole, "User is unranked");
             console.log(`[OK] Added Unranked role to ${member.user.username}`);
@@ -393,8 +392,7 @@ export async function syncAllUserRanks(guild, client = null) {
           }
         }
 
-        // Assign new rank role - refetch member to ensure role cache is updated
-        await member.roles.fetch().catch(() => null);
+        // Assign new rank role
         if (!member.roles.cache.has(role.id)) {
           await member.roles.add(role, `Rank sync: ${rankName}`);
           console.log(`[OK] Added role ${roleName} to ${member.user.username}`);
