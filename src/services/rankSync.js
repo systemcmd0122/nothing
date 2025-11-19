@@ -378,10 +378,12 @@ export async function syncAllUserRanks(guild, client = null) {
           return isRankRole(role.name) && role.name !== roleName;
         });
 
+        let removedOldRoles = false;
         for (const oldRole of oldRankRoles.values()) {
           try {
             await member.roles.remove(oldRole, "Rank update");
             console.log(`>>> Removed old role: ${oldRole.name}`);
+            removedOldRoles = true;
             await new Promise((resolve) => setTimeout(resolve, 100));
           } catch (error) {
             console.warn(
