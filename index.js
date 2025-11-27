@@ -119,7 +119,7 @@ function startKeepAlivePing() {
     } catch (error) {
       console.warn("[WARN] Keep-Alive error:", error.message);
     }
-  }, 300000); // 5分ごとにKeep-Alive ping
+  }, 180000); // 3分ごとにKeep-Alive ping（Koyeb無料枠のスリープ防止）
 }
 
 const client = new Client({
