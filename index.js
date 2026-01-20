@@ -15,11 +15,17 @@ import adminregisterCommand from "./src/commands/adminregister.js";
 import deleteRankRolesCommand from "./src/commands/deleteRankRoles.js";
 import pickCommand from "./src/commands/pick.js";
 import setupAgentBoardCommand from "./src/commands/setupAgentBoard.js";
+import notifysettingsCommand from "./src/commands/notifysettings.js";
+import followCommand from "./src/commands/follow.js";
+import patchCommand from "./src/commands/patch.js";
+import rankcheckCommand from "./src/commands/rankcheck.js";
 import { handleModalSubmit } from "./src/commands/modalHandler.js";
 import { handleBoardButton } from "./src/commands/boardButtonHandler.js";
 import { handleAgentBoardButton } from "./src/services/agentBoardHandler.js";
 import { syncAllUserRanks, initializeRankRoles } from "./src/services/rankSync.js";
 import { getRandomAgent, getRandomAgentByRole, getAllAgents } from "./src/services/agents.js";
+import { checkAllUserRankUpdates } from "./src/services/rankChangeTracker.js";
+import { checkAndNotifyNewPatch } from "./src/services/patchNotification.js";
 import "./src/config/firebase.js"; // Initialize Firebase
 
 dotenv.config();
@@ -49,7 +55,7 @@ app.get("/api/logs", (req, res) => {
 app.get("/api/random-agent", (req, res) => {
   try {
     const role = req.query.role || "random";
-    
+
     let selectedAgent;
     if (role === "random") {
       selectedAgent = getRandomAgent();
@@ -88,7 +94,7 @@ app.use("/agents", express.static(path.join(__dirname, "agents")));
 // Keep-Alive機能（Koyeb無料枠でのスリープモード防止）
 function startKeepAlive() {
   const port = process.env.PORT || 3000;
-  
+
   return new Promise((resolve) => {
     app.listen(port, "0.0.0.0", () => {
       console.log(`[OK] Express server running on port ${port}`);
@@ -104,7 +110,7 @@ function startKeepAlivePing() {
       const port = process.env.PORT || 3000;
       const hostname = process.env.KOYEB_DOMAIN || "localhost";
       const url = `http://${hostname}:${port}`;
-      
+
       const request = http.get(url, (response) => {
         if (response.statusCode === 200) {
           console.log("[OK] Keep-Alive ping sent successfully");
@@ -131,7 +137,7 @@ const client = new Client({
   ],
 });
 
-const commands = [registerCommand, rankCommand, recordCommand, myaccountCommand, setupboardCommand, adminregisterCommand, deleteRankRolesCommand, pickCommand, setupAgentBoardCommand];
+const commands = [registerCommand, rankCommand, recordCommand, myaccountCommand, setupboardCommand, adminregisterCommand, deleteRankRolesCommand, pickCommand, setupAgentBoardCommand, notifysettingsCommand, followCommand, patchCommand, rankcheckCommand];
 
 // Register slash commands
 async function registerSlashCommands() {
@@ -240,9 +246,9 @@ client.once("clientReady", async () => {
         console.log("\n" + "=".repeat(60));
         console.log("Rank sync started");
         console.log("=".repeat(60));
-        
+
         await syncAllUserRanks(targetGuild, client);
-        
+
         nextSyncTime = Date.now() + 300000;
         console.log("=".repeat(60));
         console.log("Rank sync completed");
@@ -254,6 +260,40 @@ client.once("clientReady", async () => {
         console.error("Rank sync error", error);
       }
     }, 300000); // 5 minutes
+
+    // Scheduled rank change tracker (every 10 minutes)
+    setInterval(async () => {
+      try {
+        console.log("\n" + "=".repeat(60));
+        console.log("Checking rank updates and sending notifications...");
+        console.log("=".repeat(60));
+
+        await checkAllUserRankUpdates(client, targetGuild);
+
+        console.log("=".repeat(60));
+        console.log("Rank update check completed");
+        console.log("=".repeat(60) + "\n");
+      } catch (error) {
+        console.error("Rank update check error:", error);
+      }
+    }, 600000); // 10 minutes
+
+    // Scheduled patch check (every 30 minutes)
+    setInterval(async () => {
+      try {
+        console.log("\n" + "=".repeat(60));
+        console.log("Checking for new patches...");
+        console.log("=".repeat(60));
+
+        await checkAndNotifyNewPatch(client);
+
+        console.log("=".repeat(60));
+        console.log("Patch check completed");
+        console.log("=".repeat(60) + "\n");
+      } catch (error) {
+        console.error("Patch check error:", error);
+      }
+    }, 1800000); // 30 minutes
   }
 });
 
@@ -263,7 +303,7 @@ client.on("interactionCreate", async (interaction) => {
     // Handle slash commands
     if (interaction.isChatInputCommand()) {
       const command = commands.find((cmd) => cmd.data.name === interaction.commandName);
-      
+
       if (!command) {
         return interaction.reply({
           content: "コマンドが見つかりません。",
@@ -288,7 +328,7 @@ client.on("interactionCreate", async (interaction) => {
     }
   } catch (error) {
     console.error("Error handling interaction:", error);
-    
+
     // Try to respond only if not already replied or deferred
     try {
       if (!interaction.replied && !interaction.deferred) {
