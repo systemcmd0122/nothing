@@ -260,18 +260,8 @@ export async function checkRankChange(userId, currentRankInfo) {
                 emoji: currentDiv > lastDiv ? "✅" : "⬇️",
             };
         } else if (currentRankIndex === lastRankIndex && lastStatus.currentDivision === currentRankInfo.division && currentRankInfo.rr !== lastStatus.currentRR) {
-            // Only RR change (no rank/division change)
-            const rrDiff = currentRankInfo.rr - lastStatus.currentRR;
-            const isGain = rrDiff > 0;
-            const rrChangeText = isGain ? `+${rrDiff}` : `${rrDiff}`;
-
-            notification = {
-                type: "RR_CHANGE",
-                message: `🔄 **RR変動** ${lastStatus.currentRR} → ${currentRankInfo.rr} (${rrChangeText})`,
-                previousRR: lastStatus.currentRR,
-                newRR: currentRankInfo.rr,
-                emoji: "🔄",
-            };
+            // Only RR change (no rank/division change) - NOT NOTIFIED
+            console.log(`[INFO] Only RR changed for ${userId}, no notification sent`);
         } else {
             console.log(`[INFO] No rank change detected for ${userId}`);
         }

@@ -4,7 +4,6 @@ import { EmbedBuilder } from "discord.js";
 import {
     getNotificationSettings,
     checkRankChange,
-    getFollowedPlayers,
 } from "./notificationService.js";
 import { getValorantAccount, getValorantRank } from "./valorant.js";
 
@@ -103,16 +102,10 @@ export async function checkAllUserRankUpdates(client, guild) {
                 if (notification) {
                     console.log(`[OK] Rank change detected: ${notification.type} - ${notification.message}`);
 
-                    // Send notification to user's DM
-                    await sendNotificationToUser(client, userId, notification);
-
-                    // Send notification to channel if guild provided
+                    // Send notification to channel only (with @silent)
                     if (guild) {
                         await sendChannelNotification(client, guild, account, notification);
                     }
-
-                    // Notify followers about this user's rank change
-                    await notifyFollowers(client, userId, notification, account);
 
                     notificationCount++;
                 } else {
@@ -126,53 +119,6 @@ export async function checkAllUserRankUpdates(client, guild) {
         console.log(`[OK] Rank update check completed. (${notificationCount} notifications sent)`);
     } catch (error) {
         console.error(`[ERROR] Failed to check all user rank updates: ${error.message}`);
-    }
-}
-
-/**
- * Send notification to user
- * @param {Object} client - Discord client
- * @param {string} userId - Discord user ID
- * @param {Object} notification - Notification object
- * @returns {Promise<void>}
- */
-export async function sendNotificationToUser(client, userId, notification) {
-    try {
-        const user = await client.users.fetch(userId);
-
-        if (!user) {
-            console.warn(`[WARN] User ${userId} not found.`);
-            return;
-        }
-
-        const embed = {
-            color: notification.type === "RANK_UP" ? 0x00ff00 : notification.type === "RANK_DOWN" ? 0xff0000 : 0x0099ff,
-            title: `${notification.emoji} ランク変動通知`,
-            description: notification.message,
-            fields: [],
-            timestamp: new Date(),
-        };
-
-        if (notification.previousRank && notification.newRank) {
-            embed.fields.push({
-                name: "変動内容",
-                value: `${notification.previousRank} → ${notification.newRank}`,
-                inline: false,
-            });
-        }
-
-        if (notification.previousRR !== undefined && notification.newRR !== undefined) {
-            embed.fields.push({
-                name: "RR",
-                value: `${notification.previousRR} → ${notification.newRR}`,
-                inline: true,
-            });
-        }
-
-        await user.send({ embeds: [embed] });
-        console.log(`[OK] Sent rank update notification to user ${userId}`);
-    } catch (error) {
-        console.error(`[ERROR] Failed to send notification to user ${userId}: ${error.message}`);
     }
 }
 
@@ -208,10 +154,6 @@ export async function sendChannelNotification(client, guild, account, notificati
                 title = "📊 ディビジョン変更";
                 color = 0x00aa00;
                 break;
-            case "RR_CHANGE":
-                title = "🔄 RR変動";
-                color = 0x0099ff;
-                break;
             default:
                 return;
         }
@@ -233,71 +175,9 @@ export async function sendChannelNotification(client, guild, account, notificati
             })
             .setTimestamp();
 
-        await channel.send({ embeds: [embed] });
+        await channel.send({ content: "@silent", embeds: [embed] });
         console.log(`[OK] Sent channel notification: ${account.username}#${account.tag} - ${notification.message}`);
     } catch (error) {
         console.error(`[ERROR] Failed to send channel notification: ${error.message}`);
-    }
-}
-
-/**
- * Notify followers about a user's rank change
- * @param {Object} client - Discord client
- * @param {string} userId - Discord user ID whose rank changed
- * @param {Object} notification - Notification object
- * @param {Object} account - User's Valorant account info
- * @returns {Promise<void>}
- */
-export async function notifyFollowers(client, userId, notification, account) {
-    try {
-        // Find all users who are following this user
-        const followersQuery = query(
-            collection(db, "player_follows"),
-            where("following", "array-contains", userId)
-        );
-
-        const followersSnapshot = await getDocs(followersQuery);
-
-        if (followersSnapshot.empty) {
-            return; // No followers
-        }
-
-        const embed = {
-            color: notification.type === "RANK_UP" ? 0x00ff00 : notification.type === "RANK_DOWN" ? 0xff0000 : 0x0099ff,
-            title: `${notification.emoji} フォロー中のプレイヤーのランク変動`,
-            description: `**${account.username}#${account.tag}** ${notification.message}`,
-            fields: [],
-            timestamp: new Date(),
-        };
-
-        if (notification.previousRank && notification.newRank) {
-            embed.fields.push({
-                name: "変動内容",
-                value: `${notification.previousRank} → ${notification.newRank}`,
-                inline: false,
-            });
-        }
-
-        for (const followerDoc of followersSnapshot.docs) {
-            const followerId = followerDoc.data().userId;
-
-            try {
-                // Check if follower wants these notifications
-                const settings = await getNotificationSettings(followerId);
-                if (!settings?.followedPlayersNotifications) {
-                    continue;
-                }
-
-                const followerUser = await client.users.fetch(followerId);
-                if (followerUser) {
-                    await followerUser.send({ embeds: [embed] });
-                    console.log(`[OK] Sent follower notification to user ${followerId}`);
-                }
-            } catch (error) {
-                console.error(`[ERROR] Failed to notify follower ${followerId}: ${error.message}`);
-            }
-        }
-    } catch (error) {
-        console.error(`[ERROR] Failed to notify followers: ${error.message}`);
     }
 }
