@@ -102,11 +102,6 @@ export async function checkAllUserRankUpdates(client, guild) {
                 if (notification) {
                     console.log(`[OK] Rank change detected: ${notification.type} - ${notification.message}`);
 
-                    // Send notification to channel only (with @silent)
-                    if (guild) {
-                        await sendChannelNotification(client, guild, account, notification);
-                    }
-
                     notificationCount++;
                 } else {
                     console.log(`[INFO] No rank change for ${userId}`);
@@ -122,62 +117,3 @@ export async function checkAllUserRankUpdates(client, guild) {
     }
 }
 
-/**
- * Send channel notification (for all servers to see)
- * @param {Object} client - Discord client
- * @param {Object} guild - Discord guild
- * @param {Object} account - Valorant account data
- * @param {Object} notification - Notification object
- * @returns {Promise<void>}
- */
-export async function sendChannelNotification(client, guild, account, notification) {
-    try {
-        const channel = client.channels.cache.get(NOTIFICATION_CHANNEL_ID);
-        if (!channel) {
-            console.warn(`[WARN] Notification channel not found: ${NOTIFICATION_CHANNEL_ID}`);
-            return;
-        }
-
-        let title = "";
-        let color = 0xffffff;
-
-        switch (notification.type) {
-            case "RANK_UP":
-                title = "🎉 [OK] ランクアップ！";
-                color = 0x00ff00;
-                break;
-            case "RANK_DOWN":
-                title = "📉 [ERROR] ランクダウン";
-                color = 0xff6600;
-                break;
-            case "DIVISION_CHANGE":
-                title = "📊 ディビジョン変更";
-                color = 0x00aa00;
-                break;
-            default:
-                return;
-        }
-
-        const embed = new EmbedBuilder()
-            .setColor(color)
-            .setTitle(title)
-            .setDescription(`**${account.username}#${account.tag}** のランクが変動しました`)
-            .addFields(
-                {
-                    name: "変動内容",
-                    value: notification.message,
-                    inline: false,
-                }
-            )
-            .setFooter({
-                text: "Valorant Rank Notification",
-                iconURL: client.user.displayAvatarURL({ size: 64 }),
-            })
-            .setTimestamp();
-
-        await channel.send({ content: "@silent", embeds: [embed] });
-        console.log(`[OK] Sent channel notification: ${account.username}#${account.tag} - ${notification.message}`);
-    } catch (error) {
-        console.error(`[ERROR] Failed to send channel notification: ${error.message}`);
-    }
-}

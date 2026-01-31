@@ -1,6 +1,32 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getValorantAccount } from "../services/valorant.js";
 
+// Helper to construct the base URL for images
+function getBaseUrl() {
+    if (process.env.APP_URL) {
+        return process.env.APP_URL;
+    }
+    if (process.env.KOYEB_DOMAIN) {
+        return `https://${process.env.KOYEB_DOMAIN}`;
+    }
+    return `http://localhost:${process.env.PORT || 3000}`;
+}
+
+// Helper to get the rank image file name
+function getRankImageFile(rankName, division) {
+    if (!rankName || rankName === 'Unranked' || rankName === 'Norank') {
+        return 'Norank.jpg';
+    }
+    if (rankName === 'Radiant') {
+        return 'Radiant_Rank.jpg';
+    }
+    if (division) {
+        return `${rankName}_${division}_Rank.jpg`;
+    }
+    return 'Norank.jpg'; // Fallback
+}
+
+
 const myaccountCommand = {
   data: new SlashCommandBuilder()
     .setName("myaccount")
@@ -12,69 +38,62 @@ const myaccountCommand = {
         .setRequired(false)
     ),
   async execute(interaction) {
-    const targetUser = interaction.options.getUser("user") || interaction.user;
-    const account = await getValorantAccount(targetUser.id);
+    const targetMember = interaction.options.getMember("user") || interaction.member;
+    const account = await getValorantAccount(targetMember.id);
 
     if (!account) {
       return interaction.reply({
-        content: `${targetUser.username} のValorantアカウントが登録されていません。`,
+        content: `${targetMember.displayName} のValorantアカウントが登録されていません。`,
         flags: 64, // Ephemeral flag
       });
     }
 
+    const baseUrl = getBaseUrl();
+    const rankImageFile = getRankImageFile(account.currentRank, account.currentDivision);
+    const rankImageUrl = `${baseUrl}/ranks/${rankImageFile}`;
+
     const embed = {
       color: 0x0099ff,
-      title: `◆ ${targetUser.username} Valorant Account`,
+      title: `◆ ${targetMember.displayName} Valorant Account`,
+      author: {
+        name: targetMember.displayName,
+        icon_url: targetMember.displayAvatarURL({ size: 64 }),
+      },
       description: `Account Information`,
       fields: [
         {
           name: "▶ Username",
-          value: `\`${account.username}\``,
+          value: `${account.username}`,
           inline: true,
         },
         {
           name: "□ Tag",
-          value: `\`${account.tag}\``,
+          value: `${account.tag}`,
           inline: true,
         },
         {
-          name: "◆ Region",
-          value: `**AP** (Asia Pacific)`,
-          inline: true,
-        },
-        {
-          name: "■ Platform",
-          value: `**PC**`,
-          inline: true,
+            name: '\u200B', // Zero-width space
+            value: '\u200B',
+            inline: true,
         },
         {
           name: "■ Current Rank",
-          value: `**${account.currentRank || "Not Set"}${account.currentDivision ? ` (${account.currentDivision})` : ""}**`,
+          value: `**${account.currentRank || "Not Set"} ${account.currentDivision || ""}**`,
           inline: true,
         },
         {
-          name: ">>> Last Update",
-          value: `${account.lastRankUpdate ? new Date(account.lastRankUpdate.toDate()).toLocaleString("en-US") : "Never"}`,
-          inline: true,
+            name: "■ RR",
+            value: `${account.currentRR || 'N/A'}`,
+            inline: true,
         },
         {
-          name: "□ Created",
-          value: `\`${new Date(account.createdAt.toDate()).toLocaleString("en-US")}\``,
-          inline: false,
-        },
-        {
-          name: ">>> Last Modified",
-          value: `\`${new Date(account.updatedAt.toDate()).toLocaleString("en-US")}\``,
-          inline: false,
-        },
-        {
-          name: "▶ Available Commands",
-          value: "• `/rank` - Display rank info\n• `/record` - Show match history\n• `/register` - Re-register account",
-          inline: false,
+            name: '\u200B', // Zero-width space
+            value: '\u200B',
+            inline: true,
         },
       ],
       thumbnail: {
-        url: targetUser.displayAvatarURL({ size: 128 }),
+        url: rankImageUrl,
       },
       footer: {
         text: "Valorant Account Information",

@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import "./src/utils/logCapture.js"; // ログキャプチャを有効化
 import { getLogs } from "./src/utils/logCapture.js";
 import registerCommand from "./src/commands/register.js";
+import unregisterCommand from "./src/commands/unregister.js";
 import rankCommand from "./src/commands/rank.js";
 import recordCommand from "./src/commands/record.js";
 import myaccountCommand from "./src/commands/myaccount.js";
@@ -16,16 +17,13 @@ import deleteRankRolesCommand from "./src/commands/deleteRankRoles.js";
 import pickCommand from "./src/commands/pick.js";
 import setupAgentBoardCommand from "./src/commands/setupAgentBoard.js";
 import notifysettingsCommand from "./src/commands/notifysettings.js";
-import followCommand from "./src/commands/follow.js";
-import patchCommand from "./src/commands/patch.js";
-import rankcheckCommand from "./src/commands/rankcheck.js";
 import { handleModalSubmit } from "./src/commands/modalHandler.js";
 import { handleBoardButton } from "./src/commands/boardButtonHandler.js";
 import { handleAgentBoardButton } from "./src/services/agentBoardHandler.js";
 import { syncAllUserRanks, initializeRankRoles } from "./src/services/rankSync.js";
 import { getRandomAgent, getRandomAgentByRole, getAllAgents } from "./src/services/agents.js";
 import { checkAllUserRankUpdates } from "./src/services/rankChangeTracker.js";
-import { checkAndNotifyNewPatch } from "./src/services/patchNotification.js";
+import { getAllRegisteredAccounts } from "./src/services/valorant.js";
 import "./src/config/firebase.js"; // Initialize Firebase
 
 dotenv.config();
@@ -41,14 +39,64 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Dashboard ページ
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
 });
 
-// API: コンソールログを取得
-app.get("/api/logs", (req, res) => {
-  const limit = parseInt(req.query.limit) || 100;
-  const logs = getLogs(limit);
-  res.json({ logs });
+// API: ユーザーのランク一覧を取得
+app.get("/api/ranks", async (req, res) => {
+  try {
+    const accounts = await getAllRegisteredAccounts();
+
+    const ranksArray = await Promise.all(accounts.map(async (account) => {
+      const rank = account.currentRank || 'Unranked';
+      const division = account.currentDivision || '';
+      const rr = account.currentRR || 0;
+
+      let displayName = account.discordUserId;
+      try {
+        const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID || client.guilds.cache.first()?.id);
+        if (guild) {
+            const member = await guild.members.fetch(account.discordUserId);
+            displayName = member.displayName;
+        } else {
+            const user = await client.users.fetch(account.discordUserId);
+            displayName = user.username;
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch Discord member/user ${account.discordUserId}`);
+        try {
+            const user = await client.users.fetch(account.discordUserId);
+            displayName = user.username;
+        } catch (userErr) {
+            //
+        }
+      }
+
+      return {
+        username: account.username,
+        tag: account.tag,
+        displayName: displayName,
+        rank: rank,
+        division: division,
+        rr: rr,
+        region: account.region || 'unknown',
+        updatedAt: account.updatedAt || new Date().toISOString()
+      };
+    }));
+
+    const ranks = ranksArray.sort((a, b) => {
+      // ランクで降順ソート
+      const rankOrder = ["Radiant", "Immortal", "Ascendant", "Diamond", "Platinum", "Gold", "Silver", "Bronze", "Iron", "Unranked"];
+      const aIndex = rankOrder.indexOf(a.rank);
+      const bIndex = rankOrder.indexOf(b.rank);
+      return aIndex - bIndex;
+    });
+
+    res.json({ ranks });
+  } catch (error) {
+    console.error("[ERROR] Failed to fetch ranks:", error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // API: ランダムエージェントを取得
@@ -90,6 +138,7 @@ app.get("/api/agents", (req, res) => {
 
 // Agentイメージサーバー
 app.use("/agents", express.static(path.join(__dirname, "agents")));
+app.use("/ranks", express.static(path.join(__dirname, "rank")));
 
 // Keep-Alive機能（Koyeb無料枠でのスリープモード防止）
 function startKeepAlive() {
@@ -137,7 +186,7 @@ const client = new Client({
   ],
 });
 
-const commands = [registerCommand, rankCommand, recordCommand, myaccountCommand, setupboardCommand, adminregisterCommand, deleteRankRolesCommand, pickCommand, setupAgentBoardCommand, notifysettingsCommand, followCommand, patchCommand, rankcheckCommand];
+const commands = [registerCommand, unregisterCommand, rankCommand, recordCommand, myaccountCommand, setupboardCommand, adminregisterCommand, deleteRankRolesCommand, pickCommand, setupAgentBoardCommand, notifysettingsCommand];
 
 // Register slash commands
 async function registerSlashCommands() {
@@ -278,22 +327,6 @@ client.once("clientReady", async () => {
       }
     }, 600000); // 10 minutes
 
-    // Scheduled patch check (every 30 minutes)
-    setInterval(async () => {
-      try {
-        console.log("\n" + "=".repeat(60));
-        console.log("Checking for new patches...");
-        console.log("=".repeat(60));
-
-        await checkAndNotifyNewPatch(client);
-
-        console.log("=".repeat(60));
-        console.log("Patch check completed");
-        console.log("=".repeat(60) + "\n");
-      } catch (error) {
-        console.error("Patch check error:", error);
-      }
-    }, 1800000); // 30 minutes
   }
 });
 

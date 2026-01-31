@@ -3,6 +3,31 @@ import { EmbedBuilder } from "discord.js";
 
 const NOTIFICATION_CHANNEL_ID = "1438781172997165147";
 
+// Helper to construct the base URL for images
+function getBaseUrl() {
+    if (process.env.APP_URL) {
+        return process.env.APP_URL;
+    }
+    if (process.env.KOYEB_DOMAIN) {
+        return `https://${process.env.KOYEB_DOMAIN}`;
+    }
+    return `http://localhost:${process.env.PORT || 3000}`;
+}
+
+// Helper to get the rank image file name
+function getRankImageFile(rankName, division) {
+    if (!rankName || rankName === 'Unranked' || rankName === 'Norank') {
+        return 'Norank.jpg';
+    }
+    if (rankName === 'Radiant') {
+        return 'Radiant_Rank.jpg';
+    }
+    if (division) {
+        return `${rankName}_${division}_Rank.jpg`;
+    }
+    return 'Norank.jpg'; // Fallback
+}
+
 /**
  * Get rank order for comparison
  * @param {string} rankName - Rank name
@@ -112,9 +137,11 @@ function compareRanks(lastRank, currentRankName, currentDivision) {
  * @param {string} username - Valorant username
  * @param {string} tag - Valorant tag
  * @param {Object} changeInfo - Change info from compareRanks
+ * @param {string} currentRankName - The new rank name
+ * @param {string} currentDivision - The new rank division
  * @returns {Promise<void>}
  */
-async function sendRankNotification(client, member, username, tag, changeInfo) {
+async function sendRankNotification(client, member, username, tag, changeInfo, currentRankName, currentDivision) {
   try {
     const channel = client.channels.cache.get(NOTIFICATION_CHANNEL_ID);
     if (!channel) {
@@ -129,34 +156,39 @@ async function sendRankNotification(client, member, username, tag, changeInfo) {
 
     switch (changeInfo.type) {
       case "rankup":
-        title = "[OK] Rank Up!";
+        title = "RANK UP!";
         color = 0x00ff00;
         break;
       case "promote":
-        title = "[OK] Promoted!";
+        title = "PROMOTED!";
         color = 0x00aa00;
         break;
       case "rankdown":
-        title = "[ERROR] Rank Down";
+        title = "RANK DOWN";
         color = 0xff6600;
         break;
       case "demote":
-        title = "[ERROR] Demoted";
+        title = "DEMOTED";
         color = 0xcc0000;
         break;
       case "derank":
-        title = "[ERROR] Lost Rank";
+        title = "LOST RANK";
         color = 0xff0000;
         break;
       default:
         return;
     }
+    
+    const baseUrl = getBaseUrl();
+    const rankImageFile = getRankImageFile(currentRankName, currentDivision);
+    const rankImageUrl = `${baseUrl}/ranks/${rankImageFile}`;
 
     const embed = new EmbedBuilder()
       .setColor(color)
+      .setAuthor({ name: `${member.displayName}'s Rank Changed`, iconURL: member.displayAvatarURL({ size: 64 }) })
       .setTitle(title)
       .setDescription(
-        `**${member.user.username}** had a rank change!`
+        `${member} had a rank change!`
       )
       .addFields(
         {
@@ -170,7 +202,7 @@ async function sendRankNotification(client, member, username, tag, changeInfo) {
           inline: true,
         }
       )
-      .setThumbnail(member.user.displayAvatarURL({ size: 128 }))
+      .setThumbnail(rankImageUrl)
       .setFooter({
         text: "Valorant Rank Notification",
         iconURL: client.user.displayAvatarURL({ size: 64 }),
@@ -203,8 +235,8 @@ export async function checkAndNotifyRankChange(
   currentDivision
 ) {
   try {
-    // Compare ranks (no previous rank record)
-    const changeInfo = compareRanks(null, currentRankName, currentDivision);
+    // Compare ranks
+    const changeInfo = compareRanks(account, currentRankName, currentDivision);
 
     if (!changeInfo.hasChanged) {
       return false;
@@ -220,7 +252,7 @@ export async function checkAndNotifyRankChange(
     }
 
     // Send notification
-    await sendRankNotification(client, member, account.username, account.tag, changeInfo);
+    await sendRankNotification(client, member, account.username, account.tag, changeInfo, currentRankName, currentDivision);
 
     return true;
   } catch (error) {

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VALORANT Rank Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- MDB (Material Design for Bootstrap) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.2/mdb.min.css" rel="stylesheet">
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #121212;
+        }
+        .container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .header h1 {
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+        .header p {
+            color: #aaa;
+        }
+        .card {
+            background-color: #1e1e1e;
+        }
+        .table-responsive {
+            max-height: 60vh;
+        }
+        .loading-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+        }
+        .rank-radiant {
+            color: #ffb300;
+            font-weight: 500;
+        }
+        .rank-immortal {
+            color: #e91e63;
+            font-weight: 500;
+        }
+        .rank-ascendant {
+            color: #4caf50;
+            font-weight: 500;
+        }
+        .rank-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .rank-img {
+            width: 32px;
+            height: 32px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>VALORANT Rank Dashboard</h1>
+            <p>Real-time user ranks</p>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h5><span class="material-icons" style="vertical-align: middle;">group</span> Total Users</h5>
+                    <h2 class="mb-0" id="totalUsers">0</h2>
+                </div>
+                <button class="btn btn-primary" onclick="refreshRanks()">
+                    <span class="material-icons" style="vertical-align: middle;">refresh</span> Refresh
+                </button>
+            </div>
+            <div class="card-footer text-muted text-end">
+                Last Update: <span id="lastUpdate">-</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="sticky-top">
+                            <tr>
+                                <th>Discord</th>
+                                <th>Valorant ID</th>
+                                <th>Region</th>
+                                <th>Rank</th>
+                                <th>RR</th>
+                                <th>Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rankContainer">
+                            <tr>
+                                <td colspan="6">
+                                    <div class="loading-spinner">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MDB JS -->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.2/mdb.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Fetches rank data from the API and updates the dashboard.
+        async function fetchRanks() {
+            try {
+                const response = await fetch("/api/ranks");
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch: ${response.statusText}`);
+                }
+                const data = await response.json();
+                displayRanks(data.ranks || []);
+                updateStats(data.ranks || []);
+                updateLastUpdate();
+            } catch (error) {
+                console.error("Error fetching ranks:", error);
+                const container = document.getElementById("rankContainer");
+                container.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-5">Error loading rank data.</td></tr>`;
+            }
+        }
+
+        // Renders the rank data into the table.
+        function displayRanks(ranks) {
+            const container = document.getElementById("rankContainer");
+            if (!ranks || ranks.length === 0) {
+                container.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-5">No users registered.</td></tr>`;
+                return;
+            }
+
+            // Sort by rank tier, then RR
+            ranks.sort((a, b) => {
+                const rankOrder = ["Radiant", "Immortal", "Ascendant", "Diamond", "Platinum", "Gold", "Silver", "Bronze", "Iron", "Unranked"];
+                const rankA = rankOrder.indexOf(a.rank);
+                const rankB = rankOrder.indexOf(b.rank);
+                if (rankA !== rankB) return rankA - rankB;
+                return (b.rr || 0) - (a.rr || 0);
+            });
+
+            container.innerHTML = ranks.map(rank => `
+                <tr>
+                    <td>${escapeHtml(rank.displayName || 'N/A')}</td>
+                    <td>${escapeHtml(rank.username)}#${escapeHtml(rank.tag)}</td>
+                    <td>${(rank.region || 'N/A').toUpperCase()}</td>
+                    <td class="rank-cell">
+                        <img src="${getRankImageUrl(rank)}" class="rank-img" alt="${escapeHtml(rank.rank)}">
+                        <span class="rank-${(rank.rank || '').toLowerCase()}">${escapeHtml(rank.rank) || 'Unranked'} ${escapeHtml(rank.division || '')}</span>
+                    </td>
+                    <td>${rank.rr || 0}</td>
+                    <td>${formatTime(rank.updatedAt)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        // Generates the URL for a rank image.
+        function getRankImageUrl(rank) {
+            const rankName = rank.rank || 'Unranked';
+            const division = rank.division;
+
+            if (rankName === 'Unranked' || rankName === 'Norank') {
+                return '/ranks/Norank.jpg';
+            }
+            if (rankName === 'Radiant') {
+                return '/ranks/Radiant_Rank.jpg';
+            }
+            if (rankName && division) {
+                return `/ranks/${rankName}_${division}_Rank.jpg`;
+            }
+            // Fallback for ranks without a division that aren't special cases
+            return '/ranks/Norank.jpg'; 
+        }
+
+        // Updates the statistics card.
+        function updateStats(ranks) {
+            document.getElementById("totalUsers").textContent = ranks.length;
+        }
+
+        // Updates the "Last Update" timestamp.
+        function updateLastUpdate() {
+            document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString('ja-JP');
+        }
+        
+        // Triggers a manual refresh of the rank data.
+        function refreshRanks() {
+            const container = document.getElementById("rankContainer");
+            container.innerHTML = `<tr><td colspan="6"><div class="loading-spinner"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div></td></tr>`;
+            fetchRanks();
+        }
+
+        // Formats a date string into a locale-specific string.
+        function formatTime(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                return new Date(dateString).toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' });
+            } catch {
+                return 'N/A';
+            }
+        }
+
+        // Escapes HTML special characters to prevent XSS.
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text).replace(/[&<>"']/g, m => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[m]));
+        }
+
+        // Initial load and sets up auto-refresh.
+        window.addEventListener("DOMContentLoaded", () => {
+            fetchRanks();
+            setInterval(fetchRanks, 60000); // Refresh every 60 seconds
+        });
+    </script>
+</body>
+</html>

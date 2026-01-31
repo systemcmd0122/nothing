@@ -27,36 +27,6 @@ const notifysettingsCommand = {
                             { name: "無効", value: "false" }
                         )
                 )
-        )
-        .addSubcommand((subcommand) =>
-            subcommand
-                .setName("patch")
-                .setDescription("パッチ・アップデート通知のオン/オフを切り替えます")
-                .addStringOption((option) =>
-                    option
-                        .setName("status")
-                        .setDescription("有効にするか無効にするか")
-                        .setRequired(true)
-                        .addChoices(
-                            { name: "有効", value: "true" },
-                            { name: "無効", value: "false" }
-                        )
-                )
-        )
-        .addSubcommand((subcommand) =>
-            subcommand
-                .setName("followed")
-                .setDescription("フォロー中プレイヤーのランク変動通知のオン/オフを切り替えます")
-                .addStringOption((option) =>
-                    option
-                        .setName("status")
-                        .setDescription("有効にするか無効にするか")
-                        .setRequired(true)
-                        .addChoices(
-                            { name: "有効", value: "true" },
-                            { name: "無効", value: "false" }
-                        )
-                )
         ),
     async execute(interaction) {
         await interaction.deferReply({ flags: 64 });
@@ -84,28 +54,15 @@ const notifysettingsCommand = {
                             value: settings.rankUpdateNotifications ? "✅ 有効" : "❌ 無効",
                             inline: true,
                         },
-                        {
-                            name: "パッチ通知",
-                            value: settings.patchNotifications ? "✅ 有効" : "❌ 無効",
-                            inline: true,
-                        },
-                        {
-                            name: "フォロー中プレイヤー通知",
-                            value: settings.followedPlayersNotifications ? "✅ 有効" : "❌ 無効",
-                            inline: true,
-                        },
-                        {
-                            name: "DM通知",
-                            value: settings.dmNotifications ? "✅ 有効" : "❌ 無効",
-                            inline: true,
-                        },
                     ],
                     footer: {
-                        text: "/notifysettings rank update patch followed コマンドで設定を変更できます",
+                        text: "/notifysettings rank update コマンドで設定を変更できます",
                     },
                 };
 
-                return interaction.editReply({ embeds: [embed] });
+                return interaction.editReply({
+                    embeds: [embed],
+                });
             }
 
             const status = interaction.options.getString("status") === "true";
@@ -120,28 +77,6 @@ const notifysettingsCommand = {
                 const statusText = status ? "✅ 有効に設定しました" : "❌ 無効に設定しました";
                 return interaction.editReply({
                     content: `ランク更新通知を${statusText}`,
-                });
-            }
-
-            if (subcommand === "patch") {
-                await updateNotificationSettings(userId, {
-                    patchNotifications: status,
-                });
-
-                const statusText = status ? "✅ 有効に設定しました" : "❌ 無効に設定しました";
-                return interaction.editReply({
-                    content: `パッチ・アップデート通知を${statusText}`,
-                });
-            }
-
-            if (subcommand === "followed") {
-                await updateNotificationSettings(userId, {
-                    followedPlayersNotifications: status,
-                });
-
-                const statusText = status ? "✅ 有効に設定しました" : "❌ 無効に設定しました";
-                return interaction.editReply({
-                    content: `フォロー中プレイヤーのランク変動通知を${statusText}`,
                 });
             }
         } catch (error) {

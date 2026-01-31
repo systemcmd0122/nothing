@@ -2,14 +2,16 @@ import axios from "axios";
 import { db } from "../config/firebase.js";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { readdirSync, existsSync } from "fs";
+import { existsSync } from "fs";
 import {
   collection,
   addDoc,
   query,
   where,
   getDocs,
+  getDoc,
   updateDoc,
+  deleteDoc,
   doc,
 } from "firebase/firestore";
 
@@ -100,6 +102,34 @@ export async function getValorantAccount(userId) {
 }
 
 /**
+ * Unregister (delete) a Valorant account for a user
+ * @param {string} userId - Discord user ID
+ * @returns {Promise<Object>} - Result of deletion
+ */
+export async function unregisterValorantAccount(userId) {
+  try {
+    const q = query(
+      collection(db, "valorant_accounts"),
+      where("discordUserId", "==", userId)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      return { success: false, message: "登録されているアカウントが見つかりません。" };
+    }
+
+    // Delete the account
+    const docId = querySnapshot.docs[0].id;
+    await deleteDoc(doc(db, "valorant_accounts", docId));
+
+    return { success: true, message: "アカウントが削除されました！" };
+  } catch (error) {
+    console.error("Error unregistering Valorant account:", error);
+    return { success: false, message: `エラー: ${error.message}` };
+  }
+}
+
+/**
  * Get Valorant rank from API
  * @param {string} username - Valorant username
  * @param {string} tag - Valorant tag
@@ -109,9 +139,8 @@ export async function getValorantAccount(userId) {
  */
 export async function getValorantRank(username, tag, region, platform = "pc") {
   try {
-    const url = `${VALORANT_API_BASE}/mmr/${username}/${tag}/${region}${
-      platform === "console" ? "/console" : ""
-    }`;
+    const url = `${VALORANT_API_BASE}/mmr/${username}/${tag}/${region}${platform === "console" ? "/console" : ""
+      }`;
     const response = await axios.get(url, { timeout: 10000 });
     return response.data;
   } catch (error) {
@@ -162,7 +191,7 @@ export function getRankImagePath(rankName, division = "") {
 
     // Normalize rank name
     const normalizedRank = rankName.trim().toLowerCase();
-    
+
     // Radiant has no division
     if (normalizedRank === "radiant") {
       const radiantPath = join(rankImagesDir, "Radiant_Rank.jpg");
@@ -192,7 +221,7 @@ export function getRankImagePath(rankName, division = "") {
     };
 
     const rankPrefix = rankNameMap[normalizedRank];
-    
+
     if (!rankPrefix) {
       console.warn(`Unknown rank: ${rankName}, using Norank.jpg`);
       return join(rankImagesDir, "Norank.jpg");
@@ -224,7 +253,7 @@ export function getRankImagePath(rankName, division = "") {
 
 /**
  * Get all registered Valorant accounts
- * @returns {Promise<Array>} - Array of registered accounts with user IDs
+ * @returns {Promise<Array>} - Array of registered accounts with rank info
  */
 export async function getAllRegisteredAccounts() {
   try {
@@ -232,15 +261,40 @@ export async function getAllRegisteredAccounts() {
     const querySnapshot = await getDocs(q);
 
     const accounts = [];
-    querySnapshot.forEach((doc) => {
+
+    for (const accountDoc of querySnapshot.docs) {
+      const data = accountDoc.data();
+
+      // Get rank status from rank_status_history collection
+      let rankInfo = {};
+      try {
+        const rankDocRef = doc(db, "rank_status_history", data.discordUserId);
+        const rankDocSnap = await getDoc(rankDocRef);
+        if (rankDocSnap.exists()) {
+          const rankData = rankDocSnap.data();
+          rankInfo = {
+            currentRank: rankData.currentRank || 'Unranked',
+            currentDivision: rankData.currentDivision || '',
+            currentRR: rankData.currentRR || 0,
+            updatedAt: rankData.updatedAt
+          };
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch rank info for ${data.username}:`, err.message);
+      }
+
       accounts.push({
-        discordUserId: doc.data().discordUserId,
-        username: doc.data().username,
-        tag: doc.data().tag,
-        region: doc.data().region,
-        platform: doc.data().platform,
+        discordUserId: data.discordUserId,
+        username: data.username,
+        tag: data.tag,
+        region: data.region,
+        platform: data.platform,
+        currentRank: rankInfo.currentRank || 'Unranked',
+        currentDivision: rankInfo.currentDivision || '',
+        currentRR: rankInfo.currentRR || 0,
+        updatedAt: rankInfo.updatedAt
       });
-    });
+    }
 
     return accounts;
   } catch (error) {
