@@ -13,18 +13,21 @@ import { EmbedBuilder } from "discord.js";
 export async function performGlobalRankUpdate(client) {
     try {
         console.log("\n" + "=".repeat(60));
-        console.log("Starting Global Rank Update");
+        console.log("一斉ランク更新を開始します");
         console.log("=".repeat(60));
 
         const accounts = await getAllRegisteredAccounts();
-        console.log(`[INFO] Processing ${accounts.length} accounts`);
+        console.log(`[情報] ${accounts.length} 件のアカウントを処理中...`);
 
         // Get all guilds the bot is in
         const guilds = Array.from(client.guilds.cache.values());
 
         for (const account of accounts) {
             const userId = account.discordUserId;
-            console.log(`\n[Processing User] ${account.username}#${account.tag} (${userId})`);
+            console.log(`\n[ユーザー処理] ${account.username}#${account.tag} (${userId})`);
+
+            // API負荷軽減のためのディレイ (3秒)
+            await new Promise(resolve => setTimeout(resolve, 3000));
 
             try {
                 // Fetch rank info ONCE per user
@@ -38,7 +41,23 @@ export async function performGlobalRankUpdate(client) {
                 );
 
                 if (!rankInfo) {
-                    console.log(`[WARN] Skipping ${account.username}#${account.tag} due to API error or missing info`);
+                    console.log(`[警告] APIエラーのため ${account.username}#${account.tag} のランク更新をスキップします`);
+
+                    // APIエラー時は以前のランクを維持しつつ、「取得失敗」ロールを付与する
+                    for (const guild of guilds) {
+                        try {
+                            const member = await guild.members.fetch(userId).catch(() => null);
+                            if (!member) continue;
+
+                            const errorRole = guild.roles.cache.find(r => r.name === "取得失敗");
+                            if (errorRole && !member.roles.cache.has(errorRole.id)) {
+                                await member.roles.add(errorRole, "API取得エラー");
+                                console.log(`[情報] ${guild.name} で ${member.user.username} に「取得失敗」ロールを付与しました`);
+                            }
+                        } catch (err) {
+                            console.error(`[エラー] ギルド ${guild.id} でのエラーロール付与に失敗しました: ${err.message}`);
+                        }
+                    }
                     continue;
                 }
 
@@ -82,6 +101,13 @@ export async function performGlobalRankUpdate(client) {
                         const member = await guild.members.fetch(userId).catch(() => null);
                         if (!member) continue;
 
+                        // 取得成功時は「取得失敗」ロールを削除
+                        const errorRole = member.roles.cache.find(r => r.name === "取得失敗");
+                        if (errorRole) {
+                            await member.roles.remove(errorRole, "API取得成功");
+                            console.log(`[情報] ${guild.name} で ${member.user.username} から「取得失敗」ロールを削除しました`);
+                        }
+
                         const settings = await getGuildSettings(guild.id);
 
                         // 1. Update Roles
@@ -95,20 +121,20 @@ export async function performGlobalRankUpdate(client) {
                         }
 
                     } catch (guildError) {
-                        console.error(`[ERROR] Failed to process guild ${guild.id} for user ${userId}: ${guildError.message}`);
+                        console.error(`[エラー] ギルド ${guild.id} (ユーザー ${userId}) の処理に失敗しました: ${guildError.message}`);
                     }
                 }
 
             } catch (userError) {
-                console.error(`[ERROR] Failed to process user ${userId}: ${userError.message}`);
+                console.error(`[エラー] ユーザー ${userId} の処理に失敗しました: ${userError.message}`);
             }
         }
 
         console.log("\n" + "=".repeat(60));
-        console.log("Global Rank Update Completed");
+        console.log("一斉ランク更新が完了しました");
         console.log("=".repeat(60));
     } catch (error) {
-        console.error("[CRITICAL ERROR] performGlobalRankUpdate failed:", error);
+        console.error("[重大なエラー] performGlobalRankUpdate が失敗しました:", error);
     }
 }
 
@@ -139,11 +165,11 @@ async function syncMemberRole(guild, member, rankName, division) {
 
         // Add new rank role
         if (!member.roles.cache.has(role.id)) {
-            await member.roles.add(role, "Rank update");
-            console.log(`[INFO] Updated role for ${member.user.username} in ${guild.name} to ${roleName}`);
+            await member.roles.add(role, "ランク更新");
+            console.log(`[情報] ${guild.name} で ${member.user.username} のロールを ${roleName} に更新しました`);
         }
     } catch (error) {
-        console.error(`[ERROR] syncMemberRole failed for ${member.user.id} in ${guild.id}: ${error.message}`);
+        console.error(`[エラー] ギルド ${guild.id} (ユーザー ${member.user.id}) のロール同期に失敗しました: ${error.message}`);
     }
 }
 
