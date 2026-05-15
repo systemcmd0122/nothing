@@ -1,6 +1,7 @@
 import { getAllRegisteredAccounts, getValorantRank } from "./valorant.js";
 import { checkRankChange, saveRankStatus, NOTIFICATION_CHANNEL_ID } from "./notificationService.js";
 import { updateRankInAccount } from "./rankUpdate.js";
+import { getGuildSettings } from "./guildSettings.js";
 import { EmbedBuilder } from "discord.js";
 import { db } from "../config/firebase.js";
 import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
@@ -179,6 +180,12 @@ export async function syncAllUserRanks(guild, client = null) {
       errors: [],
     };
 
+    const settings = await getGuildSettings(guild.id);
+    if (!settings?.rankRolesEnabled) {
+      console.log(`[INFO] Rank roles disabled for guild ${guild.name} (${guild.id})`);
+      return results;
+    }
+
     // Fetch all roles to ensure we have the latest data
     await guild.roles.fetch();
 
@@ -213,7 +220,9 @@ export async function syncAllUserRanks(guild, client = null) {
           account.username,
           account.tag,
           account.region,
-          account.platform
+          account.platform,
+          account.discordUserId,
+          client
         );
 
         // Parse rank information (same as rank.js)
@@ -412,7 +421,7 @@ export async function syncAllUserRanks(guild, client = null) {
         await updateRankInAccount(account.discordUserId, rankName, division);
 
         // Check and notify rank changes
-        if (client) {
+        if (client && settings.notificationsEnabled) {
             // Unify with notificationService
             const rankDataForNotification = {
                 rank: rankName,
@@ -423,7 +432,9 @@ export async function syncAllUserRanks(guild, client = null) {
             const notification = await checkRankChange(account.discordUserId, rankDataForNotification);
 
             if (notification) {
-                const channel = client.channels.cache.get(NOTIFICATION_CHANNEL_ID);
+                const targetChannelId = settings.notificationChannelId || NOTIFICATION_CHANNEL_ID;
+                const channel = guild.channels.cache.get(targetChannelId) || client.channels.cache.get(targetChannelId);
+
                 if (channel) {
                     const embed = new EmbedBuilder()
                         .setColor(notification.type.includes("UP") ? 0x00ff00 : 0xff0000)

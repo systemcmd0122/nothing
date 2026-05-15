@@ -10,6 +10,7 @@ import {
   where,
   getDocs,
   getDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -137,15 +138,77 @@ export async function unregisterValorantAccount(userId) {
  * @param {string} platform - Platform (pc or console)
  * @returns {Promise<string>} - Rank information
  */
-export async function getValorantRank(username, tag, region, platform = "pc") {
+/**
+ * Update failure count for a user and send DM if it reaches 10
+ * @param {string} userId - Discord user ID
+ * @param {Object} client - Discord client
+ * @param {boolean} reset - Whether to reset the failure count
+ */
+async function handleApiFailure(userId, client, reset = false) {
+  try {
+    const docRef = doc(db, "valorant_accounts_failures", userId);
+    const docSnap = await getDoc(docRef);
+
+    if (reset) {
+      if (docSnap.exists()) {
+        await updateDoc(docRef, { failureCount: 0, lastUpdate: new Date() });
+      }
+      return;
+    }
+
+    let count = 1;
+    if (docSnap.exists()) {
+      count = (docSnap.data().failureCount || 0) + 1;
+      await updateDoc(docRef, { failureCount: count, lastUpdate: new Date() });
+    } else {
+      await setDoc(docRef, { userId, failureCount: 1, lastUpdate: new Date() });
+    }
+
+    if (count === 10 && client) {
+      try {
+        const user = await client.users.fetch(userId);
+        await user.send(
+          "【通知】Valorant アカウント情報の取得に 10 回連続で失敗しました。\n" +
+          "ユーザー名またはタグが変更された可能性があります。`/register` コマンドを使用して、最新の情報を再登録してください。"
+        );
+        console.log(`[INFO] Sent failure notification DM to user ${userId}`);
+      } catch (dmError) {
+        console.warn(`[WARN] Failed to send DM to user ${userId}: ${dmError.message}`);
+      }
+    }
+  } catch (error) {
+    console.error(`[ERROR] Error handling API failure for ${userId}: ${error.message}`);
+  }
+}
+
+export async function getValorantRank(username, tag, region, platform = "pc", userId = null, client = null) {
   try {
     const url = `${VALORANT_API_BASE}/mmr/${username}/${tag}/${region}${platform === "console" ? "/console" : ""
       }`;
     const response = await axios.get(url, { timeout: 10000 });
+
+    // Check if the response contains an error message in text format
+    if (typeof response.data === "string" && response.data.includes("取得できませんでした")) {
+      console.warn(`[WARN] API returned error for ${username}#${tag}: ${response.data}`);
+      if (userId && client) {
+        await handleApiFailure(userId, client, false);
+      }
+      return null;
+    }
+
+    if (userId && client) {
+      await handleApiFailure(userId, client, true);
+    }
+
     return response.data;
   } catch (error) {
-    console.error("Error fetching Valorant rank:", error.message);
-    return "ランク情報を取得できませんでした。ユーザー名、タグ、リージョンを確認してください。";
+    console.error(`[ERROR] API request failed for ${username}#${tag}:`, error.message);
+
+    if (userId && client) {
+      await handleApiFailure(userId, client, false);
+    }
+
+    return null;
   }
 }
 
@@ -163,15 +226,32 @@ export async function getValorantMatchHistory(
   tag,
   region,
   platform = "pc",
-  timezone = "Europe/Rome"
+  timezone = "Europe/Rome",
+  userId = null,
+  client = null
 ) {
   try {
     const url = `${VALORANT_API_BASE}/match_history/${username}/${tag}/${region}/${platform}?timezone=${timezone}`;
     const response = await axios.get(url, { timeout: 10000 });
+
+    if (typeof response.data === "string" && response.data.includes("取得できませんでした")) {
+      if (userId && client) {
+        await handleApiFailure(userId, client, false);
+      }
+      return null;
+    }
+
+    if (userId && client) {
+      await handleApiFailure(userId, client, true);
+    }
+
     return response.data;
   } catch (error) {
     console.error("Error fetching Valorant match history:", error.message);
-    return "マッチ履歴を取得できませんでした。ユーザー名、タグ、リージョンを確認してください。";
+    if (userId && client) {
+      await handleApiFailure(userId, client, false);
+    }
+    return null;
   }
 }
 

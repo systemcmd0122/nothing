@@ -53,8 +53,14 @@ const rankCommand = {
         account.username,
         account.tag,
         account.region,
-        account.platform
+        account.platform,
+        targetMember.id,
+        interaction.client
       );
+
+      if (!rankInfo) {
+        throw new Error(`ランク情報を取得できませんでした。`);
+      }
 
       let rankName = "Norank";
       let division = "";

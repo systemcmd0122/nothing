@@ -36,8 +36,16 @@ const recordCommand = {
         account.tag,
         account.region,
         account.platform,
-        timezone
+        timezone,
+        targetUser.id,
+        interaction.client
       );
+
+      if (!matchHistory) {
+        return interaction.editReply({
+          content: "[エラー] マッチ履歴を取得できませんでした。登録情報を確認するか、時間をおいて再度お試しください。",
+        });
+      }
 
       const content =
         typeof matchHistory === "string"
