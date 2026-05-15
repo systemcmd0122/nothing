@@ -23,7 +23,7 @@ const adminregisterCommand = {
     // 管理者権限をチェック
     if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
       return interaction.reply({
-        content: "[ERROR] This command can only be used by administrators.",
+        content: "[エラー] このコマンドは管理者のみが使用できます。",
         flags: 64,
       });
     }
@@ -34,23 +34,23 @@ const adminregisterCommand = {
       // Create modal
       const modal = new ModalBuilder()
         .setCustomId(`admin_register_modal_${targetUser.id}`)
-        .setTitle(`${targetUser.username} Account Registration`);
+        .setTitle(`${targetUser.username} のアカウント登録`);
 
       // Username input field
       const usernameInput = new TextInputBuilder()
         .setCustomId("admin_register_username")
-        .setLabel("Valorant ID (Username)")
+        .setLabel("Valorant ID (ユーザー名)")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("Example: Tyu-ru")
+        .setPlaceholder("例: Player")
         .setRequired(true)
         .setMaxLength(16);
 
       // Tag input field
       const tagInput = new TextInputBuilder()
         .setCustomId("admin_register_tag")
-        .setLabel("Tag (after #)")
+        .setLabel("タグ (#の後の数字)")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("Example: 1234")
+        .setPlaceholder("例: 1234")
         .setRequired(true)
         .setMaxLength(5);
 

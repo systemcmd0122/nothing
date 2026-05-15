@@ -14,24 +14,24 @@ const deleteRankRolesCommand = {
       // 確認メッセージ表示
       const confirmEmbed = {
         color: 0xff0000,
-        title: "*** Confirm Rank Role Deletion ***",
+        title: "*** ランクロール削除の確認 ***",
         description:
-          "All rank roles on the server will be deleted.\nThis action cannot be undone. Are you sure?",
+          "サーバー内のすべてのランクロールが削除されます。\nこの操作は取り消せません。本当によろしいですか？",
         fields: [
           {
-            name: "Target",
+            name: "対象",
             value:
               "Unranked, Iron, Bronze, Silver, Gold, Platinum, Diamond, Ascendant, Immortal, Radiant",
             inline: false,
           },
           {
-            name: "Warning",
-            value: "Clicking this button will immediately delete all rank roles.",
+            name: "警告",
+            value: "このボタンを押すと、即座にすべてのランクロールが削除されます。",
             inline: false,
           },
         ],
         footer: {
-          text: "This operation will be executed immediately",
+          text: "この操作は即座に実行されます",
           icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),
         },
       };
@@ -42,13 +42,13 @@ const deleteRankRolesCommand = {
           {
             type: 2,
             style: 4, // Danger style (red)
-            label: "Proceed with Deletion",
+            label: "削除を実行する",
             custom_id: "confirm_delete_rank_roles",
           },
           {
             type: 2,
             style: 2, // Secondary style (gray)
-            label: "Cancel",
+            label: "キャンセル",
             custom_id: "cancel_delete_rank_roles",
           },
         ],
@@ -133,12 +133,12 @@ const deleteRankRolesCommand = {
       // Display role deletion information
       const processingEmbed = {
         color: 0xffaa00,
-        title: ">>> Processing Rank Role Deletion...",
-        description: `Deleting ${rolesToDelete.length} roles...`,
+        title: ">>> ランクロールを削除しています...",
+        description: `${rolesToDelete.length}個のロールを削除中...`,
         fields: [
           {
-            name: "▶ Roles to Delete",
-            value: `${rolesToDelete.length} roles`,
+            name: "▶ 削除対象のロール数",
+            value: `${rolesToDelete.length}個`,
             inline: true,
           },
         ],
@@ -180,17 +180,17 @@ const deleteRankRolesCommand = {
       // Deletion result embed
       const resultEmbed = {
         color: failedCount === 0 ? 0x00ff00 : 0xffaa00,
-        title: "[OK] Rank Role Deletion Complete",
-        description: failedCount === 0 ? "All rank roles have been successfully deleted." : "Some roles failed to delete.",
+        title: "[OK] ランクロールの削除完了",
+        description: failedCount === 0 ? "すべてのランクロールが正常に削除されました。" : "一部のロールの削除に失敗しました。",
         fields: [
           {
-            name: "[OK] Successfully Deleted",
-            value: `${deletedCount} roles`,
+            name: "[OK] 削除成功",
+            value: `${deletedCount}個`,
             inline: true,
           },
           {
-            name: "[ERROR] Deletion Failed",
-            value: `${failedCount} roles`,
+            name: "[エラー] 削除失敗",
+            value: `${failedCount}個`,
             inline: true,
           },
         ],

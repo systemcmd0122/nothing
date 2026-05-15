@@ -1,6 +1,7 @@
 import { getAllRegisteredAccounts, getValorantRank } from "./valorant.js";
-import { checkAndNotifyRankChange } from "./rankNotification.js";
+import { checkRankChange, saveRankStatus, NOTIFICATION_CHANNEL_ID } from "./notificationService.js";
 import { updateRankInAccount } from "./rankUpdate.js";
+import { EmbedBuilder } from "discord.js";
 import { db } from "../config/firebase.js";
 import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 
@@ -156,10 +157,10 @@ export async function initializeRankRoles(guild) {
       }
     }
 
-    console.log(`□ Results: Created=${createdCount} Existing=${existingCount} Errors=${errorCount}`);
-    console.log("[OK] Rank role initialization complete");
+    console.log(`□ 実行結果: 作成=${createdCount} 既存=${existingCount} エラー=${errorCount}`);
+    console.log("[OK] ランクロールの初期化が完了しました");
   } catch (error) {
-    console.error("[ERROR] Rank role initialization error:", error);
+    console.error("[エラー] ランクロール初期化エラー:", error);
     throw error;
   }
 }
@@ -183,10 +184,10 @@ export async function syncAllUserRanks(guild, client = null) {
 
     // Get all registered accounts
     const accounts = await getAllRegisteredAccounts();
-    console.log(`□ Target accounts: ${accounts.length} accounts`);
+    console.log(`□ 同期対象: ${accounts.length} アカウント`);
 
     if (accounts.length === 0) {
-      console.log("▶ No registered accounts");
+      console.log("▶ 登録されているアカウントはありません");
       return results;
     }
 
@@ -412,13 +413,27 @@ export async function syncAllUserRanks(guild, client = null) {
 
         // Check and notify rank changes
         if (client) {
-          await checkAndNotifyRankChange(
-            client,
-            guild,
-            account,
-            rankName,
-            division
-          );
+            // Unify with notificationService
+            const rankDataForNotification = {
+                rank: rankName,
+                division: division,
+                rr: 0 // RR might not be available in all contexts, but checkRankChange needs it
+            };
+
+            const notification = await checkRankChange(account.discordUserId, rankDataForNotification);
+
+            if (notification) {
+                const channel = client.channels.cache.get(NOTIFICATION_CHANNEL_ID);
+                if (channel) {
+                    const embed = new EmbedBuilder()
+                        .setColor(notification.type.includes("UP") ? 0x00ff00 : 0xff0000)
+                        .setTitle(notification.title || "ランク変動通知")
+                        .setDescription(`${notification.emoji} <@${account.discordUserId}> のランクが変動しました！\n\n${notification.message}`)
+                        .setTimestamp();
+
+                    await channel.send({ embeds: [embed] });
+                }
+            }
         }
 
         results.processed++;
@@ -432,13 +447,13 @@ export async function syncAllUserRanks(guild, client = null) {
     }
 
     console.log("━".repeat(50));
-    console.log(`□ Sync Results:`);
-    console.log(`   [OK] Processed: ${results.processed} accounts`);
-    console.log(`   >>> Updated: ${results.updated} accounts`);
-    console.log(`   ▶ Errors: ${results.errors.length} accounts`);
+    console.log(`□ 同期結果:`);
+    console.log(`   [OK] 処理済み: ${results.processed} アカウント`);
+    console.log(`   >>> 更新済み: ${results.updated} アカウント`);
+    console.log(`   ▶ エラー: ${results.errors.length} アカウント`);
     
     if (results.errors.length > 0) {
-      console.log("\n[ERROR] Error Details:");
+      console.log("\n[エラー] エラー詳細:");
       results.errors.forEach((err) => {
         console.log(`   - ${err.userId}: ${err.reason}`);
       });

@@ -43,6 +43,8 @@ export async function getNotificationSettings(userId) {
     }
 }
 
+export const NOTIFICATION_CHANNEL_ID = "1438781172997165147";
+
 /**
  * Update notification settings
  * @param {string} userId - Discord user ID
@@ -148,6 +150,7 @@ export async function checkRankChange(userId, currentRankInfo) {
                 previousRank: `${lastStatus.currentRank}${lastStatus.currentDivision}`,
                 newRank: `${currentRankInfo.rank}${currentRankInfo.division}`,
                 emoji: "🎉",
+                title: "🎉 ランクアップ！",
             };
         } else if (currentRankIndex < lastRankIndex) {
             notification = {
@@ -156,6 +159,7 @@ export async function checkRankChange(userId, currentRankInfo) {
                 previousRank: `${lastStatus.currentRank}${lastStatus.currentDivision}`,
                 newRank: `${currentRankInfo.rank}${currentRankInfo.division}`,
                 emoji: "📉",
+                title: "📉 ランクダウン",
             };
         } else if (currentRankIndex === lastRankIndex && lastStatus.currentDivision !== currentRankInfo.division) {
             // Division change within same rank
@@ -170,6 +174,7 @@ export async function checkRankChange(userId, currentRankInfo) {
                 previousRank: `${currentRankInfo.rank}${lastStatus.currentDivision}`,
                 newRank: `${currentRankInfo.rank}${currentRankInfo.division}`,
                 emoji: currentDiv > lastDiv ? "✅" : "⬇️",
+                title: currentDiv > lastDiv ? "✅ ディビジョンアップ" : "⬇️ ディビジョンダウン",
             };
         } else if (currentRankIndex === lastRankIndex && lastStatus.currentDivision === currentRankInfo.division && currentRankInfo.rr !== lastStatus.currentRR) {
             // Only RR change (no rank/division change) - NOT NOTIFIED
@@ -187,4 +192,3 @@ export async function checkRankChange(userId, currentRankInfo) {
         return null;
     }
 }
-

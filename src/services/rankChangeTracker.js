@@ -4,10 +4,9 @@ import { EmbedBuilder } from "discord.js";
 import {
     getNotificationSettings,
     checkRankChange,
+    NOTIFICATION_CHANNEL_ID
 } from "./notificationService.js";
 import { getValorantAccount, getValorantRank } from "./valorant.js";
-
-const NOTIFICATION_CHANNEL_ID = "1438781172997165147";
 
 /**
  * Get rank order for comparison
@@ -38,13 +37,13 @@ function getRankOrder(rankName) {
  */
 export async function checkAllUserRankUpdates(client, guild) {
     try {
-        console.log("[INFO] Starting rank update check for all users...");
+        console.log("[情報] すべてのユーザーのランク更新チェックを開始します...");
 
         const q = query(collection(db, "valorant_accounts"));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-            console.log("[INFO] No Valorant accounts found.");
+            console.log("[情報] Valorantアカウントが見つかりませんでした。");
             return;
         }
 
@@ -102,6 +101,17 @@ export async function checkAllUserRankUpdates(client, guild) {
                 if (notification) {
                     console.log(`[OK] Rank change detected: ${notification.type} - ${notification.message}`);
 
+                    const channel = client.channels.cache.get(NOTIFICATION_CHANNEL_ID);
+                    if (channel) {
+                        const embed = new EmbedBuilder()
+                            .setColor(notification.type.includes("UP") ? 0x00ff00 : 0xff0000)
+                            .setTitle(notification.title || "ランク変動通知")
+                            .setDescription(`${notification.emoji} <@${userId}> のランクが変動しました！\n\n${notification.message}`)
+                            .setTimestamp();
+
+                        await channel.send({ embeds: [embed] });
+                    }
+
                     notificationCount++;
                 } else {
                     console.log(`[INFO] No rank change for ${userId}`);
@@ -111,9 +121,9 @@ export async function checkAllUserRankUpdates(client, guild) {
             }
         }
 
-        console.log(`[OK] Rank update check completed. (${notificationCount} notifications sent)`);
+        console.log(`[OK] ランク更新チェックが完了しました。 (${notificationCount} 件の通知を送信)`);
     } catch (error) {
-        console.error(`[ERROR] Failed to check all user rank updates: ${error.message}`);
+        console.error(`[エラー] すべてのユーザーのランク更新チェックに失敗しました: ${error.message}`);
     }
 }
 

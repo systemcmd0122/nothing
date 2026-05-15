@@ -54,22 +54,22 @@ const recordCommand = {
         // 最初のメッセージを送信
         const firstEmbed = {
           color: 0x0099ff,
-          title: `↑ ${account.username}#${account.tag} Match History`,
-          description: `**Latest Match Information**`,
+          title: `↑ ${account.username}#${account.tag} マッチ履歴`,
+          description: `**最新のマッチ情報**`,
           fields: [
             {
-              name: "◆ Region",
-              value: `**AP** (Asia Pacific)`,
+              name: "◆ リージョン",
+              value: `**AP** (アジア太平洋)`,
               inline: true,
             },
             {
-              name: "□ Timezone",
+              name: "□ タイムゾーン",
               value: `**${timezone}**`,
               inline: true,
             },
           ],
           footer: {
-            text: `Page 1 of ${Math.ceil(content.length / 3990)} • Valorant Match History`,
+            text: `ページ 1 / ${Math.ceil(content.length / 3990)} • Valorant マッチ履歴`,
             icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),
           },
           timestamp: new Date(),
@@ -85,7 +85,7 @@ const recordCommand = {
           const pageEmbed = {
             color: 0x0099ff,
             footer: {
-              text: `Page ${i + 1} of ${chunks.length} • Valorant Match History`,
+            text: `ページ ${i + 1} / ${chunks.length} • Valorant マッチ履歴`,
             },
           };
           
@@ -98,22 +98,22 @@ const recordCommand = {
         // 短い場合はそのまま表示
         const embed = {
           color: 0x0099ff,
-          title: `↑ ${account.username}#${account.tag} Match History`,
-          description: `**Match Information**`,
+          title: `↑ ${account.username}#${account.tag} マッチ履歴`,
+          description: `**マッチ情報**`,
           fields: [
             {
-              name: "◆ Region",
-              value: `**AP** (Asia Pacific)`,
+              name: "◆ リージョン",
+              value: `**AP** (アジア太平洋)`,
               inline: true,
             },
             {
-              name: "□ Timezone",
+              name: "□ タイムゾーン",
               value: `**${timezone}**`,
               inline: true,
             },
           ],
           footer: {
-            text: "Valorant Match History",
+            text: "Valorant マッチ履歴",
             icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),
           },
           timestamp: new Date(),
