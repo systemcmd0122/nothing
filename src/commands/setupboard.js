@@ -21,26 +21,26 @@ const setupboardCommand = {
       // Create board embed
       const boardEmbed = new EmbedBuilder()
         .setColor(0xFF4655)
-        .setTitle("▶ Valorant Account Registration Board")
+        .setTitle("▶ Valorant アカウント登録ボード")
         .setDescription(
-          "Click the button below to register your Valorant account.\n\n" +
-          "After registration, you can display your rank with the `/rank` command."
+          "下のボタンをクリックして、Valorant アカウントを登録してください。\n\n" +
+          "登録後、 `/rank` コマンドで自分のランクを表示できるようになります。"
         )
         .setThumbnail("https://images.contentstack.io/v3/assets/blte86e01ceef8673ff/blt359f4da304976efd/5ecf4fcd588cd249ce331205/Valorant_logo_Large.png")
         .addFields(
           {
-            name: "□ Required Information",
-            value: "- Valorant ID (Username)\n- Tag (numbers after #)",
+            name: "□ 必要な情報",
+            value: "- Valorant ID (ユーザー名)\n- タグ (#の後の数字)",
             inline: false,
           },
           {
-            name: "■ Private",
-            value: "Your information is stored securely.",
+            name: "■ プライバシー",
+            value: "あなたの情報は安全に保管されます。",
             inline: false,
           }
         )
         .setFooter({
-          text: "unkonow bot • Valorant Account Registration",
+          text: "unkonow bot • Valorant アカウント登録",
           iconURL: interaction.client.user.displayAvatarURL({ size: 64 }),
         })
         .setTimestamp();
@@ -50,7 +50,7 @@ const setupboardCommand = {
         .addComponents(
           new ButtonBuilder()
             .setCustomId("register_button")
-            .setLabel("Account Registration")
+            .setLabel("アカウント登録")
             .setStyle(ButtonStyle.Primary)
         );
 
@@ -63,8 +63,8 @@ const setupboardCommand = {
       // Return success message
       const successEmbed = new EmbedBuilder()
         .setColor(0x00AA00)
-        .setTitle("[OK] Board Setup Complete")
-        .setDescription("Account registration board has been successfully set up.")
+        .setTitle("[OK] ボード設置完了")
+        .setDescription("アカウント登録ボードが正常に設置されました。")
         .setTimestamp();
 
       return interaction.editReply({

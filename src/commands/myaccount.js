@@ -54,20 +54,20 @@ const myaccountCommand = {
 
     const embed = {
       color: 0x0099ff,
-      title: `◆ ${targetMember.displayName} Valorant Account`,
+      title: `◆ ${targetMember.displayName} の Valorant アカウント`,
       author: {
         name: targetMember.displayName,
         icon_url: targetMember.displayAvatarURL({ size: 64 }),
       },
-      description: `Account Information`,
+      description: `アカウント登録情報`,
       fields: [
         {
-          name: "▶ Username",
+          name: "▶ ユーザー名",
           value: `${account.username}`,
           inline: true,
         },
         {
-          name: "□ Tag",
+          name: "□ タグ",
           value: `${account.tag}`,
           inline: true,
         },
@@ -77,13 +77,13 @@ const myaccountCommand = {
             inline: true,
         },
         {
-          name: "■ Current Rank",
-          value: `**${account.currentRank || "Not Set"} ${account.currentDivision || ""}**`,
+          name: "■ 現在のランク",
+          value: `**${account.currentRank || "未設定"} ${account.currentDivision || ""}**`,
           inline: true,
         },
         {
-            name: "■ RR",
-            value: `${account.currentRR || 'N/A'}`,
+            name: "■ 現在のRR",
+            value: `${account.currentRR || '不明'}`,
             inline: true,
         },
         {
@@ -96,7 +96,7 @@ const myaccountCommand = {
         url: rankImageUrl,
       },
       footer: {
-        text: "Valorant Account Information",
+        text: "Valorant アカウント情報",
         icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),
       },
       timestamp: new Date(),

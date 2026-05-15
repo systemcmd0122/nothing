@@ -263,8 +263,8 @@ client.once("clientReady", async () => {
         const seconds = secondsLeft % 60;
         const timeString =
           minutes > 0
-            ? `${minutes}m ${seconds}s後に更新`
-            : `${seconds}s後に更新`;
+            ? `${minutes}分 ${seconds}秒後に更新`
+            : `${seconds}秒後に更新`;
 
         client.user.setActivity(timeString, {
           type: ActivityType.Custom,

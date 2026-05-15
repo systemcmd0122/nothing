@@ -32,37 +32,37 @@ export async function handleModalSubmit(interaction) {
       if (result.success) {
         const embed = {
           color: 0x00ff00,
-          title: "[OK] Account Registration Complete",
-          description: "Valorant account has been registered successfully",
+          title: "[OK] アカウント登録完了",
+          description: "Valorant アカウントが正常に登録されました。",
           fields: [
             {
-              name: "▶ Username",
+              name: "▶ ユーザー名",
               value: `\`${username}\``,
               inline: true,
             },
             {
-              name: "◆ Tag",
+              name: "◆ タグ",
               value: `\`${tag}\``,
               inline: true,
             },
             {
-              name: "■ Region",
-              value: `**AP** (Asia Pacific)`,
+              name: "■ リージョン",
+              value: `**AP** (アジア太平洋)`,
               inline: true,
             },
             {
-              name: "■ Platform",
+              name: "■ プラットフォーム",
               value: `**PC**`,
               inline: true,
             },
             {
-              name: "Next Steps",
-              value: "** Let's get started! **\n• `/rank` - Check rank information\n• `/record` - View match history\n• `/myaccount` - Check account info",
+              name: "次のステップ",
+              value: "** さあ、始めましょう！ **\n• `/rank` - ランク情報を確認\n• `/record` - マッチ履歴を表示\n• `/myaccount` - アカウント情報を確認",
               inline: false,
             },
             {
-              name: "▶ Notice",
-              value: "• API updates may take a few seconds\n• Use `/register` to update your information",
+              name: "▶ お知らせ",
+              value: "• APIの更新には数秒かかる場合があります\n• `/register` を使用して情報を更新できます",
               inline: false,
             },
           ],
@@ -70,7 +70,7 @@ export async function handleModalSubmit(interaction) {
             url: interaction.user.displayAvatarURL({ size: 128 }),
           },
           footer: {
-            text: "Valorant Account Registration Success",
+            text: "Valorant アカウント登録成功",
             icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),
           },
           timestamp: new Date(),
@@ -79,13 +79,13 @@ export async function handleModalSubmit(interaction) {
         return interaction.editReply({ embeds: [embed] });
       } else {
         return interaction.editReply({
-          content: `[ERROR] ${result.message}`,
+          content: `[エラー] ${result.message}`,
         });
       }
     } catch (error) {
       console.error("Error registering Valorant account:", error);
       return interaction.editReply({
-        content: "[ERROR] An error occurred during account registration.",
+        content: "[エラー] アカウント登録中にエラーが発生しました。",
       });
     }
   }
@@ -114,36 +114,36 @@ export async function handleModalSubmit(interaction) {
         
         const embed = {
           color: 0x00ff00,
-          title: "[OK] Account Registration Complete (Admin)",
-          description: `${targetUser.username}'s Valorant account has been registered successfully`,
+          title: "[OK] アカウント登録完了 (管理者)",
+          description: `${targetUser.username} の Valorant アカウントが正常に登録されました。`,
           fields: [
             {
-              name: "▶ Target User",
+              name: "▶ 対象ユーザー",
               value: `<@${targetUserId}>`,
               inline: true,
             },
             {
-              name: "◆ Admin",
+              name: "◆ 管理者",
               value: `${interaction.user.username}`,
               inline: true,
             },
             {
-              name: "▶ Username",
+              name: "▶ ユーザー名",
               value: `\`${username}\``,
               inline: true,
             },
             {
-              name: "◆ Tag",
+              name: "◆ タグ",
               value: `\`${tag}\``,
               inline: true,
             },
             {
-              name: "■ Region",
-              value: `**AP** (Asia Pacific)`,
+              name: "■ リージョン",
+              value: `**AP** (アジア太平洋)`,
               inline: true,
             },
             {
-              name: "■ Platform",
+              name: "■ プラットフォーム",
               value: `**PC**`,
               inline: true,
             },
@@ -152,7 +152,7 @@ export async function handleModalSubmit(interaction) {
             url: targetUser.displayAvatarURL({ size: 128 }),
           },
           footer: {
-            text: "Admin Valorant Account Registration",
+            text: "管理者による Valorant アカウント登録",
             icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),
           },
           timestamp: new Date(),
@@ -161,13 +161,13 @@ export async function handleModalSubmit(interaction) {
         return interaction.editReply({ embeds: [embed] });
       } else {
         return interaction.editReply({
-          content: `[ERROR] ${result.message}`,
+          content: `[エラー] ${result.message}`,
         });
       }
     } catch (error) {
       console.error("Error registering Valorant account (admin):", error);
       return interaction.editReply({
-        content: "[ERROR] An error occurred during account registration.",
+        content: "[エラー] アカウント登録中にエラーが発生しました。",
       });
     }
   }

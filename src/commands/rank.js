@@ -37,7 +37,7 @@ const rankCommand = {
         .setRequired(false)
     ),
   async execute(interaction) {
-    await interaction.deferReply();
+    await interaction.deferReply({ flags: 64 });
 
     const targetMember = interaction.options.getMember("user") || interaction.member;
     const account = await getValorantAccount(targetMember.id);
@@ -92,25 +92,25 @@ const rankCommand = {
       const detailEmbed = {
         color: 0xff4655,
         author: {
-          name: `${targetMember.displayName}'s Rank`,
+          name: `${targetMember.displayName} のランク`,
           icon_url: targetMember.displayAvatarURL({ size: 64 }),
         },
         title: `${account.username}#${account.tag}`,
         fields: [
           {
-            name: "Rank",
+            name: "ランク",
             value: `**${rankDescription}**`,
             inline: true,
           },
           {
-            name: "RR",
+            name: "現在のRR",
             value: `\`${rr}\``,
             inline: true,
           },
         ],
         thumbnail: { url: rankImageUrl },
         footer: {
-          text: "Valorant Rank Info",
+          text: "Valorant ランク情報",
           icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),
         },
         timestamp: new Date(),
@@ -126,17 +126,17 @@ const rankCommand = {
       try {
         const accountInfo = {
           color: 0xffaa00,
-          title: "▶ Failed to Retrieve Rank Information",
-          description: `Rank information for **${account.username}#${account.tag}** could not be retrieved. Please verify the registration information.`,
+          title: "▶ ランク情報の取得に失敗しました",
+          description: `**${account.username}#${account.tag}** のランク情報を取得できませんでした。登録情報を確認してください。`,
           fields: [
             {
-              name: ">>> Solution",
-              value: `If your information is incorrect, please use `/register` to re-register your account.`,
+              name: ">>> 解決策",
+              value: `情報が間違っている場合は、 \`/register\` を使用してアカウントを再登録してください。`,
               inline: false,
             },
           ],
           footer: {
-            text: "Please verify your account information",
+            text: "アカウント情報を確認してください",
             icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),
           },
           timestamp: new Date(),
@@ -144,16 +144,16 @@ const rankCommand = {
         await targetMember.send({ embeds: [accountInfo] }).catch(dmErr => {
             console.error("Failed to send DM, replying in channel.", dmErr);
             interaction.editReply({
-              content: "[ERROR] Failed to retrieve rank information. Could not send a DM. Please verify your registered account information with `/myaccount`.",
+              content: "[エラー] ランク情報を取得できませんでした。DMを送信できませんでした。`/myaccount` で登録情報を確認してください。",
             });
         });
 
         return interaction.editReply({
-          content: "[ERROR] Failed to retrieve rank information. Please check your DMs for more details.",
+          content: "[エラー] ランク情報を取得できませんでした。詳細はDMを確認してください。",
         });
       } catch (e) {
         return interaction.editReply({
-            content: "[ERROR] An unexpected error occurred while handling a rank fetch failure."
+            content: "[エラー] ランク取得失敗の処理中、予期しないエラーが発生しました。"
         });
       }
     }
