@@ -4,6 +4,7 @@ import { updateRankInAccount } from "./rankUpdate.js";
 import { getGuildSettings } from "./guildSettings.js";
 import { initializeRankRoles, getRoleName, getRoleColor, getRolePosition } from "./rankSync.js";
 import { EmbedBuilder } from "discord.js";
+import { updateRankBoard } from "./rankBoardService.js";
 
 /**
  * Perform a global update for all users across all guilds
@@ -131,8 +132,18 @@ export async function performGlobalRankUpdate(client) {
         }
 
         console.log("\n" + "=".repeat(60));
-        console.log("一斉ランク更新が完了しました");
+        console.log("一斉ランク更新が完了しました。リーダーボードを更新します...");
         console.log("=".repeat(60));
+
+        // Update rank boards for all guilds
+        for (const guild of guilds) {
+            try {
+                await updateRankBoard(guild, accounts);
+            } catch (boardError) {
+                console.error(`[エラー] ギルド ${guild.id} のリーダーボード更新に失敗しました: ${boardError.message}`);
+            }
+        }
+
     } catch (error) {
         console.error("[重大なエラー] performGlobalRankUpdate が失敗しました:", error);
     }
