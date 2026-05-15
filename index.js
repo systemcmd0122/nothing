@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, REST, Routes, ActivityType } from "discord.js";
 import dotenv from "dotenv";
 import http from "http";
+import https from "https";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -179,22 +180,24 @@ function startKeepAlivePing() {
   setInterval(async () => {
     try {
       const port = process.env.PORT || 3000;
-      const hostname = process.env.KOYEB_DOMAIN || "localhost";
-      const url = `http://${hostname}:${port}`;
+      const hostname = process.env.KOYEB_DOMAIN;
+      const url = hostname ? `https://${hostname}` : `http://localhost:${port}`;
+      const protocol = url.startsWith("https") ? https : http;
 
-      const request = http.get(url, (response) => {
+      console.log(`[情報] Keep-Alive ping を送信中: ${url}`);
+      const request = protocol.get(url, (response) => {
         if (response.statusCode === 200) {
-          console.log("[OK] Keep-Alive ping sent successfully");
+          console.log("[OK] Keep-Alive ping の送信に成功しました");
         }
       });
 
       request.on("error", (err) => {
-        console.warn("[WARN] Keep-Alive ping error:", err.message);
+        console.warn("[警告] Keep-Alive ping エラー:", err.message);
       });
 
       request.setTimeout(5000);
     } catch (error) {
-      console.warn("[WARN] Keep-Alive error:", error.message);
+      console.warn("[警告] Keep-Alive エラー:", error.message);
     }
   }, 180000); // 3分ごとにKeep-Alive ping（Koyeb無料枠のスリープ防止）
 }
@@ -274,8 +277,8 @@ client.once("clientReady", async () => {
       }
     })();
 
-    // Schedule global rank update every 5 minutes (300000ms)
-    let nextSyncTime = Date.now() + 300000;
+    // Schedule global rank update every 1 hour (3600000ms)
+    let nextSyncTime = Date.now() + 3600000;
 
     // Update activity with countdown
     const updateActivity = () => {
@@ -284,12 +287,18 @@ client.once("clientReady", async () => {
       const secondsLeft = Math.ceil(timeUntilSync / 1000);
 
       if (secondsLeft > 0) {
-        const minutes = Math.floor(secondsLeft / 60);
+        const hours = Math.floor(secondsLeft / 3600);
+        const minutes = Math.floor((secondsLeft % 3600) / 60);
         const seconds = secondsLeft % 60;
-        const timeString =
-          minutes > 0
-            ? `${minutes}分 ${seconds}秒後に更新`
-            : `${seconds}秒後に更新`;
+
+        let timeString = "";
+        if (hours > 0) {
+          timeString = `${hours}時間 ${minutes}分後に更新`;
+        } else if (minutes > 0) {
+          timeString = `${minutes}分 ${seconds}秒後に更新`;
+        } else {
+          timeString = `${seconds}秒後に更新`;
+        }
 
         client.user.setActivity(timeString, {
           type: ActivityType.Custom,
@@ -307,12 +316,12 @@ client.once("clientReady", async () => {
     setInterval(async () => {
       try {
         await performGlobalRankUpdate(client);
-        nextSyncTime = Date.now() + 300000;
+        nextSyncTime = Date.now() + 3600000;
         updateActivity();
       } catch (error) {
         console.error("Global rank sync error", error);
       }
-    }, 300000); // 5 minutes
+    }, 3600000); // 1 hour
 
   }
 });

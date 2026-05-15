@@ -18,6 +18,7 @@ const RANK_INFO = {
   "Ascendant": { order: 7, color: 0xA6E05A, divisions: 3 },  // Ascendant
   "Immortal": { order: 8, color: 0xC4005E, divisions: 3 },   // Immortal
   "Radiant": { order: 9, color: 0xFFE26A, divisions: 1 },    // Radiant
+  "取得失敗": { order: -1, color: 0x000000, divisions: 1 },   // 取得失敗 (黒)
 };
 
 /**
@@ -67,7 +68,7 @@ export function getRolePosition(rankName) {
  * @returns {boolean}
  */
 function isRankRole(roleName) {
-  return Object.keys(RANK_INFO).some((rank) => roleName.includes(rank));
+  return Object.keys(RANK_INFO).some((rank) => roleName.includes(rank)) && roleName !== "取得失敗";
 }
 
 /**
@@ -92,7 +93,14 @@ export async function initializeRankRoles(guild) {
       const divisionsToCreate = rankData.divisions || 1;
 
       for (let div = 1; div <= divisionsToCreate; div++) {
-        const roleName = rankName === "Unranked" ? "Unranked1" : `${rankName}${div}`;
+        let roleName;
+        if (rankName === "Unranked") {
+          roleName = "Unranked1";
+        } else if (rankName === "取得失敗") {
+          roleName = "取得失敗";
+        } else {
+          roleName = `${rankName}${div}`;
+        }
         
         try {
           // Check if role already exists by name

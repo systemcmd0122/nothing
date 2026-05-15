@@ -4,12 +4,13 @@ import { getValorantAccount, getValorantRank } from "../services/valorant.js";
 // Helper to construct the base URL for images
 function getBaseUrl() {
     if (process.env.APP_URL) {
-        return process.env.APP_URL;
+        return process.env.APP_URL.replace(/\/$/, "");
     }
     if (process.env.KOYEB_DOMAIN) {
         return `https://${process.env.KOYEB_DOMAIN}`;
     }
-    return `http://localhost:${process.env.PORT || 3000}`;
+    const port = process.env.PORT || 3000;
+    return `http://localhost:${port}`;
 }
 
 // Helper to get the rank image file name
