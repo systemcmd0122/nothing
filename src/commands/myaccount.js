@@ -1,20 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getValorantAccount } from "../services/valorant.js";
-import { getBaseUrl, isValidUrl } from "../utils/url.js";
-
-// Helper to get the rank image file name
-function getRankImageFile(rankName, division) {
-    if (!rankName || rankName === 'Unranked' || rankName === 'Norank') {
-        return 'Norank.jpg';
-    }
-    if (rankName === 'Radiant') {
-        return 'Radiant_Rank.jpg';
-    }
-    if (division) {
-        return `${rankName}_${division}_Rank.jpg`;
-    }
-    return 'Norank.jpg'; // Fallback
-}
+import { getRankImageUrl, isValidUrl } from "../utils/url.js";
 
 
 const myaccountCommand = {
@@ -38,13 +24,11 @@ const myaccountCommand = {
       });
     }
 
-    const baseUrl = getBaseUrl();
-    const rankImageFile = getRankImageFile(account.currentRank, account.currentDivision);
-    const rankImageUrl = `${baseUrl}/ranks/${rankImageFile}`;
+    const rankImageUrl = getRankImageUrl(account.currentRank, account.currentDivision);
 
     const embed = {
       color: 0x0099ff,
-      title: `◆ ${targetMember.displayName} の Valorant アカウント`,
+      title: `${targetMember.displayName} の Valorant アカウント`,
       author: {
         name: targetMember.displayName,
         icon_url: targetMember.displayAvatarURL({ size: 64 }),
@@ -52,32 +36,32 @@ const myaccountCommand = {
       description: `アカウント登録情報`,
       fields: [
         {
-          name: "▶ ユーザー名",
-          value: `${account.username}`,
+          name: "ユーザー名",
+          value: `\`${account.username}\``,
           inline: true,
         },
         {
-          name: "□ タグ",
-          value: `${account.tag}`,
+          name: "タグ",
+          value: `\`${account.tag}\``,
           inline: true,
         },
         {
-            name: '\u200B', // Zero-width space
+            name: '\u200B',
             value: '\u200B',
             inline: true,
         },
         {
-          name: "■ 現在のランク",
-          value: `**${account.currentRank || "未設定"} ${account.currentDivision || ""}**`,
+          name: "現在のランク",
+          value: `\`${account.currentRank || "未設定"} ${account.currentDivision || ""}\``,
           inline: true,
         },
         {
-            name: "■ 現在のRR",
-            value: `${account.currentRR || '不明'}`,
+            name: "現在のRR",
+            value: `\`${account.currentRR || '不明'}\``,
             inline: true,
         },
         {
-            name: '\u200B', // Zero-width space
+            name: '\u200B',
             value: '\u200B',
             inline: true,
         },

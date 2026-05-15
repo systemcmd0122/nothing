@@ -33,6 +33,30 @@ export function getBaseUrl() {
 }
 
 /**
+ * Gets the URL for a Valorant rank image.
+ *
+ * @param {string} rankName - The name of the rank (e.g., "Bronze", "Iron", "Radiant")
+ * @param {string|number} division - The division number (1, 2, 3)
+ * @returns {string} The full URL to the rank image
+ */
+export function getRankImageUrl(rankName, division) {
+    const baseUrl = getBaseUrl();
+    let fileName = 'Norank.jpg';
+
+    if (rankName && rankName !== 'Unranked' && rankName !== 'Norank') {
+        if (rankName === 'Radiant') {
+            fileName = 'Radiant_Rank.jpg';
+        } else if (division) {
+            // Ensure rankName is capitalized for file matching
+            const capitalizedRank = rankName.charAt(0).toUpperCase() + rankName.slice(1).toLowerCase();
+            fileName = `${capitalizedRank}_${division}_Rank.jpg`;
+        }
+    }
+
+    return `${baseUrl}/ranks/${fileName}`;
+}
+
+/**
  * Validates if a string is a well-formed URL.
  *
  * @param {string} string - The string to validate

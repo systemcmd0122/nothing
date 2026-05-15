@@ -146,20 +146,22 @@ export async function checkRankChange(userId, currentRankInfo) {
         if (currentRankIndex > lastRankIndex) {
             notification = {
                 type: "RANK_UP",
-                message: `🎉 **ランクアップ！** ${lastStatus.currentRank}${lastStatus.currentDivision} → ${currentRankInfo.rank}${currentRankInfo.division}`,
+                message: `**ランクアップ**\n\`${lastStatus.currentRank}${lastStatus.currentDivision}\` → \`${currentRankInfo.rank}${currentRankInfo.division}\``,
                 previousRank: `${lastStatus.currentRank}${lastStatus.currentDivision}`,
                 newRank: `${currentRankInfo.rank}${currentRankInfo.division}`,
-                emoji: "🎉",
-                title: "🎉 ランクアップ！",
+                rank: currentRankInfo.rank,
+                division: currentRankInfo.division,
+                title: "ランクアップ",
             };
         } else if (currentRankIndex < lastRankIndex) {
             notification = {
                 type: "RANK_DOWN",
-                message: `📉 **ランクダウン...** ${lastStatus.currentRank}${lastStatus.currentDivision} → ${currentRankInfo.rank}${currentRankInfo.division}`,
+                message: `**ランクダウン**\n\`${lastStatus.currentRank}${lastStatus.currentDivision}\` → \`${currentRankInfo.rank}${currentRankInfo.division}\``,
                 previousRank: `${lastStatus.currentRank}${lastStatus.currentDivision}`,
                 newRank: `${currentRankInfo.rank}${currentRankInfo.division}`,
-                emoji: "📉",
-                title: "📉 ランクダウン",
+                rank: currentRankInfo.rank,
+                division: currentRankInfo.division,
+                title: "ランクダウン",
             };
         } else if (currentRankIndex === lastRankIndex && lastStatus.currentDivision !== currentRankInfo.division) {
             // Division change within same rank
@@ -169,12 +171,13 @@ export async function checkRankChange(userId, currentRankInfo) {
             notification = {
                 type: currentDiv > lastDiv ? "DIVISION_UP" : "DIVISION_DOWN",
                 message: currentDiv > lastDiv
-                    ? `✅ **ディビジョンアップ** ${currentRankInfo.rank}${lastStatus.currentDivision} → ${currentRankInfo.rank}${currentRankInfo.division}`
-                    : `⬇️ **ディビジョンダウン** ${currentRankInfo.rank}${lastStatus.currentDivision} → ${currentRankInfo.rank}${currentRankInfo.division}`,
+                    ? `**ディビジョンアップ**\n\`${currentRankInfo.rank}${lastStatus.currentDivision}\` → \`${currentRankInfo.rank}${currentRankInfo.division}\``
+                    : `**ディビジョンダウン**\n\`${currentRankInfo.rank}${lastStatus.currentDivision}\` → \`${currentRankInfo.rank}${currentRankInfo.division}\``,
                 previousRank: `${currentRankInfo.rank}${lastStatus.currentDivision}`,
                 newRank: `${currentRankInfo.rank}${currentRankInfo.division}`,
-                emoji: currentDiv > lastDiv ? "✅" : "⬇️",
-                title: currentDiv > lastDiv ? "✅ ディビジョンアップ" : "⬇️ ディビジョンダウン",
+                rank: currentRankInfo.rank,
+                division: currentRankInfo.division,
+                title: currentDiv > lastDiv ? "ディビジョンアップ" : "ディビジョンダウン",
             };
         } else if (currentRankIndex === lastRankIndex && lastStatus.currentDivision === currentRankInfo.division && currentRankInfo.rr !== lastStatus.currentRR) {
             // Only RR change (no rank/division change) - NOT NOTIFIED

@@ -82,11 +82,11 @@ const setupAgentBoardCommand = {
 
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({
-          content: `❌ エラーが発生しました: ${error.message}`,
+          content: `[エラー] エラーが発生しました: ${error.message}`,
         });
       } else {
         await interaction.reply({
-          content: `❌ エラーが発生しました: ${error.message}`,
+          content: `[エラー] エラーが発生しました: ${error.message}`,
           ephemeral: true,
         });
       }

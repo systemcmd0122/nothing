@@ -63,7 +63,7 @@ export async function generateRankBoardEmbed(guild, accounts = null) {
 
     const embed = new EmbedBuilder()
         .setColor(0xFF4655)
-        .setTitle(`📊 ${guild.name} ランクリーダーボード`)
+        .setTitle(`${guild.name} ランクリーダーボード`)
         .setDescription(sortedAccounts.length > 0 ? "サーバー内の登録ユーザーのランク一覧です。" : "登録されているユーザーがいません。")
         .setThumbnail("https://images.contentstack.io/v3/assets/blte86e01ceef8673ff/blt359f4da304976efd/5ecf4fcd588cd249ce331205/Valorant_logo_Large.png")
         .setTimestamp()
@@ -72,12 +72,11 @@ export async function generateRankBoardEmbed(guild, accounts = null) {
     if (sortedAccounts.length > 0) {
         let boardText = "";
         sortedAccounts.forEach((account, index) => {
-            const rankEmoji = getRankEmoji(account.currentRank);
             const divisionStr = account.currentRank === "Radiant" || account.currentRank === "Unranked" ? "" : account.currentDivision;
             const rankStr = `${account.currentRank} ${divisionStr}`.trim();
             const rrStr = account.currentRR !== undefined ? ` (${account.currentRR} RR)` : "";
 
-            boardText += `**${index + 1}.** ${rankEmoji} **${account.displayName}**\n \`${rankStr}${rrStr}\` (${account.username}#${account.tag})\n\n`;
+            boardText += `**${index + 1}.** **${account.displayName}**\n \`${rankStr}${rrStr}\` (${account.username}#${account.tag})\n\n`;
         });
 
         // Split into multiple fields if too long (Discord embed field limit is 1024 chars)
@@ -140,23 +139,3 @@ export async function updateRankBoard(guild, accounts = null) {
     }
 }
 
-/**
- * Get emoji for rank
- * @param {string} rank - Rank name
- * @returns {string} - Emoji
- */
-function getRankEmoji(rank) {
-    const emojis = {
-        "Radiant": "✨",
-        "Immortal": "🔴",
-        "Ascendant": "🟢",
-        "Diamond": "💎",
-        "Platinum": "💍",
-        "Gold": "🟡",
-        "Silver": "⚪",
-        "Bronze": "🟠",
-        "Iron": "🔘",
-        "Unranked": "❓"
-    };
-    return emojis[rank] || "❓";
-}

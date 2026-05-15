@@ -21,21 +21,21 @@ const setupboardCommand = {
       // Create board embed
       const boardEmbed = new EmbedBuilder()
         .setColor(0xFF4655)
-        .setTitle("▶ Valorant アカウント登録ボード")
+        .setTitle("Valorant アカウント登録ボード")
         .setDescription(
           "下のボタンをクリックして、Valorant アカウントを登録してください。\n\n" +
-          "登録後、 `/rank` コマンドで自分のランクを表示できるようになります。\n" +
+          "登録後、 \`/rank\` コマンドで自分のランクを表示できるようになります。\n" +
           "また、他のサーバーですでに登録済みの方は、このサーバーでもそのまま機能を利用いただけます。"
         )
         .setThumbnail("https://images.contentstack.io/v3/assets/blte86e01ceef8673ff/blt359f4da304976efd/5ecf4fcd588cd249ce331205/Valorant_logo_Large.png")
         .addFields(
           {
-            name: "□ 必要な情報",
+            name: "必要な情報",
             value: "- Valorant ID (ユーザー名)\n- タグ (#の後の数字)",
             inline: false,
           },
           {
-            name: "■ プライバシー",
+            name: "プライバシー",
             value: "あなたの情報は安全に保管されます。",
             inline: false,
           }
@@ -64,7 +64,7 @@ const setupboardCommand = {
       // Return success message
       const successEmbed = new EmbedBuilder()
         .setColor(0x00AA00)
-        .setTitle("[OK] ボード設置完了")
+        .setTitle("ボード設置完了")
         .setDescription("アカウント登録ボードが正常に設置されました。")
         .setTimestamp();
 

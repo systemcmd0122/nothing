@@ -32,36 +32,36 @@ export async function handleModalSubmit(interaction) {
       if (result.success) {
         const embed = {
           color: 0x00ff00,
-          title: "[OK] アカウント登録完了",
+          title: "アカウント登録完了",
           description: "Valorant アカウントが正常に登録されました。",
           fields: [
             {
-              name: "▶ ユーザー名",
+              name: "ユーザー名",
               value: `\`${username}\``,
               inline: true,
             },
             {
-              name: "◆ タグ",
+              name: "タグ",
               value: `\`${tag}\``,
               inline: true,
             },
             {
-              name: "■ リージョン",
-              value: `**AP** (アジア太平洋)`,
+              name: "リージョン",
+              value: `\`AP\` (アジア太平洋)`,
               inline: true,
             },
             {
-              name: "■ プラットフォーム",
-              value: `**PC**`,
+              name: "プラットフォーム",
+              value: `\`PC\``,
               inline: true,
             },
             {
               name: "次のステップ",
-              value: "** さあ、始めましょう！ **\n• `/rank` - ランク情報を確認\n• `/record` - マッチ履歴を表示\n• `/myaccount` - アカウント情報を確認",
+              value: "さあ、始めましょう！\n• `/rank` - ランク情報を確認\n• `/record` - マッチ履歴を表示\n• `/myaccount` - アカウント情報を確認",
               inline: false,
             },
             {
-              name: "▶ お知らせ",
+              name: "お知らせ",
               value: "• APIの更新には数秒かかる場合があります\n• `/register` を使用して情報を更新できます",
               inline: false,
             },
@@ -114,37 +114,37 @@ export async function handleModalSubmit(interaction) {
         
         const embed = {
           color: 0x00ff00,
-          title: "[OK] アカウント登録完了 (管理者)",
+          title: "アカウント登録完了 (管理者)",
           description: `${targetUser.username} の Valorant アカウントが正常に登録されました。`,
           fields: [
             {
-              name: "▶ 対象ユーザー",
+              name: "対象ユーザー",
               value: `<@${targetUserId}>`,
               inline: true,
             },
             {
-              name: "◆ 管理者",
+              name: "管理者",
               value: `${interaction.user.username}`,
               inline: true,
             },
             {
-              name: "▶ ユーザー名",
+              name: "ユーザー名",
               value: `\`${username}\``,
               inline: true,
             },
             {
-              name: "◆ タグ",
+              name: "タグ",
               value: `\`${tag}\``,
               inline: true,
             },
             {
-              name: "■ リージョン",
-              value: `**AP** (アジア太平洋)`,
+              name: "リージョン",
+              value: `\`AP\` (アジア太平洋)`,
               inline: true,
             },
             {
-              name: "■ プラットフォーム",
-              value: `**PC**`,
+              name: "プラットフォーム",
+              value: `\`PC\``,
               inline: true,
             },
           ],

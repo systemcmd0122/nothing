@@ -14,7 +14,7 @@ const deleteRankRolesCommand = {
       // 確認メッセージ表示
       const confirmEmbed = {
         color: 0xff0000,
-        title: "*** ランクロール削除の確認 ***",
+        title: "ランクロール削除の確認",
         description:
           "サーバー内のすべてのランクロールが削除されます。\nこの操作は取り消せません。本当によろしいですか？",
         fields: [
@@ -69,7 +69,7 @@ const deleteRankRolesCommand = {
         .awaitMessageComponent({ filter, time: 60000 })
         .catch(async () => {
           await interaction.editReply({
-            content: ">>> Confirmation timeout. Operation cancelled.",
+            content: "確認のタイムアウトにより、操作をキャンセルしました。",
             embeds: [],
             components: [],
           });
@@ -123,7 +123,7 @@ const deleteRankRolesCommand = {
 
       if (rolesToDelete.length === 0) {
         await interaction.editReply({
-          content: "▶ No rank roles found to delete.",
+          content: "削除対象のランクロールが見つかりませんでした。",
           embeds: [],
           components: [],
         });
@@ -133,12 +133,12 @@ const deleteRankRolesCommand = {
       // Display role deletion information
       const processingEmbed = {
         color: 0xffaa00,
-        title: ">>> ランクロールを削除しています...",
+        title: "ランクロールを削除しています",
         description: `${rolesToDelete.length}個のロールを削除中...`,
         fields: [
           {
-            name: "▶ 削除対象のロール数",
-            value: `${rolesToDelete.length}個`,
+            name: "削除対象のロール数",
+            value: `\`${rolesToDelete.length}\`個`,
             inline: true,
           },
         ],
@@ -180,17 +180,17 @@ const deleteRankRolesCommand = {
       // Deletion result embed
       const resultEmbed = {
         color: failedCount === 0 ? 0x00ff00 : 0xffaa00,
-        title: "[OK] ランクロールの削除完了",
+        title: "ランクロールの削除完了",
         description: failedCount === 0 ? "すべてのランクロールが正常に削除されました。" : "一部のロールの削除に失敗しました。",
         fields: [
           {
-            name: "[OK] 削除成功",
-            value: `${deletedCount}個`,
+            name: "削除成功",
+            value: `\`${deletedCount}\`個`,
             inline: true,
           },
           {
-            name: "[エラー] 削除失敗",
-            value: `${failedCount}個`,
+            name: "削除失敗",
+            value: `\`${failedCount}\`個`,
             inline: true,
           },
         ],
@@ -213,7 +213,7 @@ const deleteRankRolesCommand = {
       });
 
       console.log(
-        `\n□ Rank Role Deletion Complete:\n[OK] Success: ${deletedCount} roles\n[ERROR] Failed: ${failedCount} roles`
+        `\nRank Role Deletion Complete:\nSuccess: ${deletedCount} roles\nFailed: ${failedCount} roles`
       );
     } catch (error) {
       console.error("[ERROR] Rank role deletion error:", error);

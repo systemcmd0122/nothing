@@ -61,16 +61,16 @@ const settingsCommand = {
 
         const embed = {
           color: 0x0099ff,
-          title: "⚙️ サーバー設定",
+          title: "サーバー設定",
           fields: [
             {
               name: "ランク通知",
-              value: settings.notificationsEnabled ? "✅ 有効" : "❌ 無効",
+              value: settings.notificationsEnabled ? "有効" : "無効",
               inline: true,
             },
             {
               name: "ランクロール付与",
-              value: settings.rankRolesEnabled ? "✅ 有効" : "❌ 無効",
+              value: settings.rankRolesEnabled ? "有効" : "無効",
               inline: true,
             },
             {
@@ -87,7 +87,7 @@ const settingsCommand = {
         const enabled = interaction.options.getBoolean("enabled");
         await updateGuildSettings(guildId, { notificationsEnabled: enabled });
         return interaction.editReply({
-          content: `ランク通知を ${enabled ? "✅ 有効" : "❌ 無効"} に設定しました。`,
+          content: `ランク通知を ${enabled ? "有効" : "無効"} に設定しました。`,
         });
       }
 
@@ -95,7 +95,7 @@ const settingsCommand = {
         const enabled = interaction.options.getBoolean("enabled");
         await updateGuildSettings(guildId, { rankRolesEnabled: enabled });
         return interaction.editReply({
-          content: `ランクロール付与を ${enabled ? "✅ 有効" : "❌ 無効"} に設定しました。`,
+          content: `ランクロール付与を ${enabled ? "有効" : "無効"} に設定しました。`,
         });
       }
 

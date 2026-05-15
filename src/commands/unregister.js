@@ -28,8 +28,8 @@ const unregisterCommand = {
             if (result.success) {
                 const embed = {
                     color: 0xff6600,
-                    title: "❌ 登録削除完了",
-                    description: `**${account.username}#${account.tag}** の登録を削除しました。`,
+                    title: "登録削除完了",
+                    description: `\`${account.username}#${account.tag}\` の登録を削除しました。`,
                     fields: [
                         {
                             name: "削除されたアカウント",
