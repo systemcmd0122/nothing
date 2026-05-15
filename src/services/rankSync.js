@@ -5,6 +5,7 @@ import { getGuildSettings } from "./guildSettings.js";
 import { EmbedBuilder } from "discord.js";
 import { db } from "../config/firebase.js";
 import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { getRankImageUrl, isValidUrl } from "../utils/url.js";
 
 // ランク情報とロール対応 - すべてのランクに1-3のディビジョンを含む
 const RANK_INFO = {
@@ -78,8 +79,8 @@ function isRankRole(roleName) {
  */
 export async function initializeRankRoles(guild) {
   try {
-    console.log("□ Initializing Rank Roles");
-    console.log(`▶ Guild: ${guild.name} (ID: ${guild.id})`);
+    console.log("Initializing Rank Roles");
+    console.log(`Guild: ${guild.name} (ID: ${guild.id})`);
 
     let createdCount = 0;
     let existingCount = 0;
@@ -108,7 +109,7 @@ export async function initializeRankRoles(guild) {
 
           if (role) {
             // Role already exists - do nothing
-            console.log(`  ▶ Existing: ${roleName}`);
+            console.log(`  Existing: ${roleName}`);
             existingCount++;
             continue;
           }
@@ -131,14 +132,14 @@ export async function initializeRankRoles(guild) {
             if (createError.code === 30013) {
               // Maximum number of roles reached
               console.warn(
-                `  ▶ Limit: Maximum number of roles reached: ${roleName}`
+                `  Limit: Maximum number of roles reached: ${roleName}`
               );
               errorCount++;
               continue;
             } else if (createError.code === 50013) {
               // Missing permissions
               console.warn(
-                `  ▶ Permission: Missing role creation permission: ${roleName}`
+                `  Permission: Missing role creation permission: ${roleName}`
               );
               errorCount++;
               continue;
@@ -150,7 +151,7 @@ export async function initializeRankRoles(guild) {
               await guild.roles.fetch();
               role = guild.roles.cache.find((r) => r.name === roleName);
               if (role) {
-                console.log(`  ▶ Existing: ${roleName}`);
+                console.log(`  Existing: ${roleName}`);
                 existingCount++;
               } else {
                 throw createError;
@@ -166,8 +167,8 @@ export async function initializeRankRoles(guild) {
       }
     }
 
-    console.log(`□ 実行結果: 作成=${createdCount} 既存=${existingCount} エラー=${errorCount}`);
-    console.log("[OK] ランクロールの初期化が完了しました");
+    console.log(`実行結果: 作成=${createdCount} 既存=${existingCount} エラー=${errorCount}`);
+    console.log("ランクロールの初期化が完了しました");
   } catch (error) {
     console.error("[エラー] ランクロール初期化エラー:", error);
     throw error;
@@ -199,23 +200,23 @@ export async function syncAllUserRanks(guild, client = null) {
 
     // Get all registered accounts
     const accounts = await getAllRegisteredAccounts();
-    console.log(`□ 同期対象: ${accounts.length} アカウント`);
+    console.log(`同期対象: ${accounts.length} アカウント`);
 
     if (accounts.length === 0) {
-      console.log("▶ 登録されているアカウントはありません");
+      console.log("登録されているアカウントはありません");
       return results;
     }
 
     for (const account of accounts) {
       try {
-        console.log(`■ ${account.username}#${account.tag}...`);
+        console.log(`${account.username}#${account.tag}...`);
         
         // Fetch member from guild
         let member;
         try {
           member = await guild.members.fetch(account.discordUserId);
         } catch (error) {
-          console.log(`  ▶ Not in guild`);
+          console.log(`  Not in guild`);
           results.errors.push({
             userId: account.discordUserId,
             reason: "Member not found in guild",
@@ -259,7 +260,7 @@ export async function syncAllUserRanks(guild, client = null) {
         }
 
         if (rankName === "Norank") {
-          console.log(`▶ No rank found for ${account.username}#${account.tag} - assigning Unranked role`);
+          console.log(`No rank found for ${account.username}#${account.tag} - assigning Unranked role`);
           
           // Find or create Unranked role
           const unrankedRoleName = "Unranked1";
@@ -333,7 +334,7 @@ export async function syncAllUserRanks(guild, client = null) {
         const roleColor = getRoleColor(rankName);
         const rolePosition = getRolePosition(rankName);
 
-        console.log(`■ Role name: ${roleName}, Position: ${rolePosition}`);
+        console.log(`Role name: ${roleName}, Position: ${rolePosition}`);
 
         // Fresh fetch to ensure we get the latest roles
         await guild.roles.fetch().catch(() => null);
@@ -357,7 +358,7 @@ export async function syncAllUserRanks(guild, client = null) {
             role = guild.roles.cache.find((r) => r.name === roleName);
             
             if (role) {
-              console.log(`▶ Role already exists: ${roleName}`);
+              console.log(`Role already exists: ${roleName}`);
             } else {
               console.error(
                 `[ERROR] Failed to create role ${roleName}: ${error.message}`
@@ -384,7 +385,7 @@ export async function syncAllUserRanks(guild, client = null) {
             }
           } catch (updateError) {
             console.warn(
-              `▶ Failed to update role settings ${roleName}:`,
+              `Failed to update role settings ${roleName}:`,
               updateError.message
             );
           }
@@ -421,7 +422,7 @@ export async function syncAllUserRanks(guild, client = null) {
             results.updated++;
             console.log(`[OK] Updated role to ${roleName} for ${member.user.username}`);
           } else {
-            console.log(`▶ ${member.user.username} already has ${roleName}`);
+            console.log(`${member.user.username} already has ${roleName}`);
           }
         }
 
@@ -444,10 +445,16 @@ export async function syncAllUserRanks(guild, client = null) {
                 const channel = guild.channels.cache.get(targetChannelId) || client.channels.cache.get(targetChannelId);
 
                 if (channel) {
+                    const rankImageUrl = getRankImageUrl(notification.rank, notification.division);
                     const embed = new EmbedBuilder()
                         .setColor(notification.type.includes("UP") ? 0x00ff00 : 0xff0000)
                         .setTitle(notification.title || "ランク変動通知")
-                        .setDescription(`${notification.emoji} <@${account.discordUserId}> のランクが変動しました！\n\n${notification.message}`)
+                        .setAuthor({
+                            name: member.displayName,
+                            iconURL: member.user.displayAvatarURL()
+                        })
+                        .setDescription(`<@${account.discordUserId}> のランクが変動しました。\n\n${notification.message}`)
+                        .setThumbnail(isValidUrl(rankImageUrl) ? rankImageUrl : null)
                         .setTimestamp();
 
                     await channel.send({ embeds: [embed] });
@@ -465,20 +472,20 @@ export async function syncAllUserRanks(guild, client = null) {
       }
     }
 
-    console.log("━".repeat(50));
-    console.log(`□ 同期結果:`);
-    console.log(`   [OK] 処理済み: ${results.processed} アカウント`);
-    console.log(`   >>> 更新済み: ${results.updated} アカウント`);
-    console.log(`   ▶ エラー: ${results.errors.length} アカウント`);
+    console.log("-".repeat(50));
+    console.log(`同期結果:`);
+    console.log(`   処理済み: ${results.processed} アカウント`);
+    console.log(`   更新済み: ${results.updated} アカウント`);
+    console.log(`   エラー: ${results.errors.length} アカウント`);
     
     if (results.errors.length > 0) {
-      console.log("\n[エラー] エラー詳細:");
+      console.log("\nエラー詳細:");
       results.errors.forEach((err) => {
         console.log(`   - ${err.userId}: ${err.reason}`);
       });
     }
     
-    console.log("━".repeat(50));
+    console.log("-".repeat(50));
     return results;
   } catch (error) {
     console.error("[ERROR] Rank sync error:", error);

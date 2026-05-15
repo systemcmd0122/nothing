@@ -62,17 +62,17 @@ const recordCommand = {
         // 最初のメッセージを送信
         const firstEmbed = {
           color: 0x0099ff,
-          title: `↑ ${account.username}#${account.tag} マッチ履歴`,
+          title: `${account.username}#${account.tag} マッチ履歴`,
           description: `**最新のマッチ情報**`,
           fields: [
             {
-              name: "◆ リージョン",
-              value: `**AP** (アジア太平洋)`,
+              name: "リージョン",
+              value: `\`AP\` (アジア太平洋)`,
               inline: true,
             },
             {
-              name: "□ タイムゾーン",
-              value: `**${timezone}**`,
+              name: "タイムゾーン",
+              value: `\`${timezone}\``,
               inline: true,
             },
           ],
@@ -106,17 +106,17 @@ const recordCommand = {
         // 短い場合はそのまま表示
         const embed = {
           color: 0x0099ff,
-          title: `↑ ${account.username}#${account.tag} マッチ履歴`,
+          title: `${account.username}#${account.tag} マッチ履歴`,
           description: `**マッチ情報**`,
           fields: [
             {
-              name: "◆ リージョン",
-              value: `**AP** (アジア太平洋)`,
+              name: "リージョン",
+              value: `\`AP\` (アジア太平洋)`,
               inline: true,
             },
             {
-              name: "□ タイムゾーン",
-              value: `**${timezone}**`,
+              name: "タイムゾーン",
+              value: `\`${timezone}\``,
               inline: true,
             },
           ],

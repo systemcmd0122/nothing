@@ -1,20 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getValorantAccount, getValorantRank } from "../services/valorant.js";
-import { getBaseUrl, isValidUrl } from "../utils/url.js";
-
-// Helper to get the rank image file name
-function getRankImageFile(rankName, division) {
-    if (!rankName || rankName === 'Unranked' || rankName === 'Norank') {
-        return 'Norank.jpg';
-    }
-    if (rankName === 'Radiant') {
-        return 'Radiant_Rank.jpg';
-    }
-    if (division) {
-        return `${rankName}_${division}_Rank.jpg`;
-    }
-    return 'Norank.jpg'; // Fallback
-}
+import { getRankImageUrl, isValidUrl } from "../utils/url.js";
 
 const rankCommand = {
   data: new SlashCommandBuilder()
@@ -81,21 +67,19 @@ const rankCommand = {
         throw new Error(`Unable to parse rank information: ${rankInfo}`);
       }
 
-      const baseUrl = getBaseUrl();
-      const rankImageFile = getRankImageFile(rankName, division);
-      const rankImageUrl = `${baseUrl}/ranks/${rankImageFile}`;
+      const rankImageUrl = getRankImageUrl(rankName, division);
       
       const detailEmbed = {
         color: 0xff4655,
         author: {
-          name: `${targetMember.displayName} のランク`,
+          name: targetMember.displayName,
           icon_url: targetMember.displayAvatarURL({ size: 64 }),
         },
         title: `${account.username}#${account.tag}`,
         fields: [
           {
             name: "ランク",
-            value: `**${rankDescription}**`,
+            value: `\`${rankDescription}\``,
             inline: true,
           },
           {
@@ -122,12 +106,12 @@ const rankCommand = {
       try {
         const accountInfo = {
           color: 0xffaa00,
-          title: "▶ ランク情報の取得に失敗しました",
-          description: `**${account.username}#${account.tag}** のランク情報を取得できませんでした。登録情報を確認してください。`,
+          title: "ランク情報の取得失敗",
+          description: `\`${account.username}#${account.tag}\` のランク情報を取得できませんでした。登録情報を確認してください。`,
           fields: [
             {
-              name: ">>> 解決策",
-              value: `情報が間違っている場合は、 \`/register\` を使用してアカウントを再登録してください。`,
+              name: "解決策",
+              value: `情報が間違っている場合は \`/register\` を使用してアカウントを再登録してください。`,
               inline: false,
             },
           ],

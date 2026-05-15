@@ -46,12 +46,12 @@ const notifysettingsCommand = {
             if (subcommand === "view") {
                 const embed = {
                     color: 0x0099ff,
-                    title: "📬 通知設定",
+                    title: "通知設定",
                     description: "あなたの通知設定は以下の通りです：",
                     fields: [
                         {
                             name: "ランク更新通知",
-                            value: settings.rankUpdateNotifications ? "✅ 有効" : "❌ 無効",
+                            value: settings.rankUpdateNotifications ? "有効" : "無効",
                             inline: true,
                         },
                     ],
@@ -74,9 +74,9 @@ const notifysettingsCommand = {
                     rankDownNotifications: status,
                 });
 
-                const statusText = status ? "✅ 有効に設定しました" : "❌ 無効に設定しました";
+                const statusText = status ? "有効に設定しました" : "無効に設定しました";
                 return interaction.editReply({
-                    content: `ランク更新通知を${statusText}`,
+                    content: `ランク更新通知を ${statusText}`,
                 });
             }
         } catch (error) {

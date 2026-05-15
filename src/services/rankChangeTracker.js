@@ -8,6 +8,7 @@ import {
 } from "./notificationService.js";
 import { getGuildSettings } from "./guildSettings.js";
 import { getValorantAccount, getValorantRank } from "./valorant.js";
+import { getRankImageUrl, isValidUrl } from "../utils/url.js";
 
 /**
  * Get rank order for comparison
@@ -120,10 +121,16 @@ export async function checkAllUserRankUpdates(client) {
                             const channel = guild.channels.cache.get(targetChannelId);
 
                             if (channel) {
+                                const rankImageUrl = getRankImageUrl(notification.rank, notification.division);
                                 const embed = new EmbedBuilder()
                                     .setColor(notification.type.includes("UP") ? 0x00ff00 : 0xff0000)
                                     .setTitle(notification.title || "ランク変動通知")
-                                    .setDescription(`${notification.emoji} <@${userId}> のランクが変動しました！\n\n${notification.message}`)
+                                    .setAuthor({
+                                        name: member.displayName,
+                                        iconURL: member.user.displayAvatarURL()
+                                    })
+                                    .setDescription(`<@${userId}> のランクが変動しました。\n\n${notification.message}`)
+                                    .setThumbnail(isValidUrl(rankImageUrl) ? rankImageUrl : null)
                                     .setTimestamp();
 
                                 await channel.send({ embeds: [embed] });
