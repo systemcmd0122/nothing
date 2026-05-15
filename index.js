@@ -17,6 +17,7 @@ import deleteRankRolesCommand from "./src/commands/deleteRankRoles.js";
 import pickCommand from "./src/commands/pick.js";
 import setupAgentBoardCommand from "./src/commands/setupAgentBoard.js";
 import notifysettingsCommand from "./src/commands/notifysettings.js";
+import settingsCommand from "./src/commands/settings.js";
 import { handleModalSubmit } from "./src/commands/modalHandler.js";
 import { handleBoardButton } from "./src/commands/boardButtonHandler.js";
 import { handleAgentBoardButton } from "./src/services/agentBoardHandler.js";
@@ -24,6 +25,7 @@ import { syncAllUserRanks, initializeRankRoles } from "./src/services/rankSync.j
 import { getRandomAgent, getRandomAgentByRole, getAllAgents } from "./src/services/agents.js";
 import { checkAllUserRankUpdates } from "./src/services/rankChangeTracker.js";
 import { getAllRegisteredAccounts } from "./src/services/valorant.js";
+import { performGlobalRankUpdate } from "./src/services/globalUpdater.js";
 import "./src/config/firebase.js"; // Initialize Firebase
 
 dotenv.config();
@@ -45,7 +47,25 @@ app.get("/", (req, res) => {
 // API: ユーザーのランク一覧を取得
 app.get("/api/ranks", async (req, res) => {
   try {
-    const accounts = await getAllRegisteredAccounts();
+    const guildId = req.query.guildId;
+    let accounts = await getAllRegisteredAccounts();
+
+    // If guildId is provided, filter accounts to only those who are members of the guild
+    if (guildId) {
+      const guild = client.guilds.cache.get(guildId);
+      if (guild) {
+        const filteredAccounts = [];
+        for (const account of accounts) {
+          try {
+            await guild.members.fetch(account.discordUserId);
+            filteredAccounts.push(account);
+          } catch (err) {
+            // Member not in guild
+          }
+        }
+        accounts = filteredAccounts;
+      }
+    }
 
     const ranksArray = await Promise.all(accounts.map(async (account) => {
       const rank = account.currentRank || 'Unranked';
@@ -54,9 +74,11 @@ app.get("/api/ranks", async (req, res) => {
 
       let displayName = account.discordUserId;
       try {
-        const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID || client.guilds.cache.first()?.id);
-        if (guild) {
-            const member = await guild.members.fetch(account.discordUserId);
+        // Use provided guildId or fall back to any guild the member is in
+        const targetGuild = guildId ? client.guilds.cache.get(guildId) : client.guilds.cache.find(g => g.members.cache.has(account.discordUserId));
+
+        if (targetGuild) {
+            const member = await targetGuild.members.fetch(account.discordUserId);
             displayName = member.displayName;
         } else {
             const user = await client.users.fetch(account.discordUserId);
@@ -186,7 +208,7 @@ const client = new Client({
   ],
 });
 
-const commands = [registerCommand, unregisterCommand, rankCommand, recordCommand, myaccountCommand, setupboardCommand, adminregisterCommand, deleteRankRolesCommand, pickCommand, setupAgentBoardCommand, notifysettingsCommand];
+const commands = [registerCommand, unregisterCommand, rankCommand, recordCommand, myaccountCommand, setupboardCommand, adminregisterCommand, deleteRankRolesCommand, pickCommand, setupAgentBoardCommand, notifysettingsCommand, settingsCommand];
 
 // Register slash commands
 async function registerSlashCommands() {
@@ -233,23 +255,26 @@ client.once("clientReady", async () => {
   } else {
     console.log(`Rank sync target guild: ${targetGuild.name}`);
 
-    // Initialize all rank roles (バックグラウンドで実行)
+    // Initialize all rank roles for all guilds (バックグラウンドで実行)
     (async () => {
-      try {
-        await initializeRankRoles(targetGuild);
-      } catch (error) {
-        console.error("Rank roles initialization failed:", error);
+      for (const [guildId, guild] of client.guilds.cache) {
+        try {
+          console.log(`[INFO] Initializing roles for guild: ${guild.name} (${guildId})`);
+          await initializeRankRoles(guild);
+        } catch (error) {
+          console.error(`[ERROR] Role initialization failed for guild ${guild.name}:`, error);
+        }
       }
 
-      // Initial sync after role initialization
+      // Initial global sync
       try {
-        await syncAllUserRanks(targetGuild, client);
+        await performGlobalRankUpdate(client);
       } catch (error) {
-        console.error("Initial rank sync failed:", error);
+        console.error("Initial global rank sync failed:", error);
       }
     })();
 
-    // Schedule rank sync every 5 minutes (300000ms)
+    // Schedule global rank update every 5 minutes (300000ms)
     let nextSyncTime = Date.now() + 300000;
 
     // Update activity with countdown
@@ -278,54 +303,16 @@ client.once("clientReady", async () => {
     // Initial activity update
     updateActivity();
 
-    // Console log for every 30 seconds
-    setInterval(() => {
-      const now = Date.now();
-      const timeUntilSync = Math.max(0, nextSyncTime - now);
-      const secondsLeft = Math.ceil(timeUntilSync / 1000);
-
-      if (secondsLeft > 0 && secondsLeft % 30 === 0) {
-        console.log(`Next rank sync in ${secondsLeft} seconds...`);
-      }
-    }, 5000); // Check every 5 seconds
-
-    // Scheduled sync
+    // Scheduled global sync
     setInterval(async () => {
       try {
-        console.log("\n" + "=".repeat(60));
-        console.log("Rank sync started");
-        console.log("=".repeat(60));
-
-        await syncAllUserRanks(targetGuild, client);
-
+        await performGlobalRankUpdate(client);
         nextSyncTime = Date.now() + 300000;
-        console.log("=".repeat(60));
-        console.log("Rank sync completed");
-        console.log("=".repeat(60) + "\n");
-
-        // Update activity after sync
         updateActivity();
       } catch (error) {
-        console.error("Rank sync error", error);
+        console.error("Global rank sync error", error);
       }
     }, 300000); // 5 minutes
-
-    // Scheduled rank change tracker (every 10 minutes)
-    setInterval(async () => {
-      try {
-        console.log("\n" + "=".repeat(60));
-        console.log("Checking rank updates and sending notifications...");
-        console.log("=".repeat(60));
-
-        await checkAllUserRankUpdates(client, targetGuild);
-
-        console.log("=".repeat(60));
-        console.log("Rank update check completed");
-        console.log("=".repeat(60) + "\n");
-      } catch (error) {
-        console.error("Rank update check error:", error);
-      }
-    }, 600000); // 10 minutes
 
   }
 });

@@ -179,6 +179,8 @@ export async function checkRankChange(userId, currentRankInfo) {
         } else if (currentRankIndex === lastRankIndex && lastStatus.currentDivision === currentRankInfo.division && currentRankInfo.rr !== lastStatus.currentRR) {
             // Only RR change (no rank/division change) - NOT NOTIFIED
             console.log(`[INFO] Only RR changed for ${userId}, no notification sent`);
+            // Reset notification to null just in case
+            notification = null;
         } else {
             console.log(`[INFO] No rank change detected for ${userId}`);
         }

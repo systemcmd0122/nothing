@@ -24,7 +24,8 @@ const setupboardCommand = {
         .setTitle("▶ Valorant アカウント登録ボード")
         .setDescription(
           "下のボタンをクリックして、Valorant アカウントを登録してください。\n\n" +
-          "登録後、 `/rank` コマンドで自分のランクを表示できるようになります。"
+          "登録後、 `/rank` コマンドで自分のランクを表示できるようになります。\n" +
+          "また、他のサーバーですでに登録済みの方は、このサーバーでもそのまま機能を利用いただけます。"
         )
         .setThumbnail("https://images.contentstack.io/v3/assets/blte86e01ceef8673ff/blt359f4da304976efd/5ecf4fcd588cd249ce331205/Valorant_logo_Large.png")
         .addFields(

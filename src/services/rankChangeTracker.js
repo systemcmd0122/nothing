@@ -6,6 +6,7 @@ import {
     checkRankChange,
     NOTIFICATION_CHANNEL_ID
 } from "./notificationService.js";
+import { getGuildSettings } from "./guildSettings.js";
 import { getValorantAccount, getValorantRank } from "./valorant.js";
 
 /**
@@ -35,7 +36,7 @@ function getRankOrder(rankName) {
  * @param {Object} guild - Discord guild object (optional)
  * @returns {Promise<void>}
  */
-export async function checkAllUserRankUpdates(client, guild) {
+export async function checkAllUserRankUpdates(client) {
     try {
         console.log("[情報] すべてのユーザーのランク更新チェックを開始します...");
 
@@ -48,17 +49,20 @@ export async function checkAllUserRankUpdates(client, guild) {
         }
 
         let notificationCount = 0;
+        const accounts = querySnapshot.docs.map(doc => doc.data());
 
-        for (const doc of querySnapshot.docs) {
-            const account = doc.data();
+        // Get all guilds the bot is in
+        const guilds = client.guilds.cache;
+
+        for (const account of accounts) {
             const userId = account.discordUserId;
 
             try {
-                // Get notification settings
-                const settings = await getNotificationSettings(userId);
-                if (!settings?.rankUpdateNotifications) {
+                // Get user's personal notification settings
+                const userSettings = await getNotificationSettings(userId);
+                if (!userSettings?.rankUpdateNotifications) {
                     console.log(`[INFO] Notifications disabled for user ${userId}`);
-                    continue; // Skip if notifications are disabled
+                    continue;
                 }
 
                 // Get current rank info
@@ -66,7 +70,9 @@ export async function checkAllUserRankUpdates(client, guild) {
                     account.username,
                     account.tag,
                     account.region,
-                    account.platform
+                    account.platform,
+                    userId,
+                    client
                 );
 
                 if (!rankInfo) {
@@ -101,15 +107,30 @@ export async function checkAllUserRankUpdates(client, guild) {
                 if (notification) {
                     console.log(`[OK] Rank change detected: ${notification.type} - ${notification.message}`);
 
-                    const channel = client.channels.cache.get(NOTIFICATION_CHANNEL_ID);
-                    if (channel) {
-                        const embed = new EmbedBuilder()
-                            .setColor(notification.type.includes("UP") ? 0x00ff00 : 0xff0000)
-                            .setTitle(notification.title || "ランク変動通知")
-                            .setDescription(`${notification.emoji} <@${userId}> のランクが変動しました！\n\n${notification.message}`)
-                            .setTimestamp();
+                    // Send notification to each guild the user is in, if notifications are enabled for that guild
+                    for (const [guildId, guild] of guilds) {
+                        try {
+                            const member = await guild.members.fetch(userId).catch(() => null);
+                            if (!member) continue; // User is not in this guild
 
-                        await channel.send({ embeds: [embed] });
+                            const guildSettings = await getGuildSettings(guildId);
+                            if (!guildSettings?.notificationsEnabled) continue;
+
+                            const targetChannelId = guildSettings.notificationChannelId || NOTIFICATION_CHANNEL_ID;
+                            const channel = guild.channels.cache.get(targetChannelId);
+
+                            if (channel) {
+                                const embed = new EmbedBuilder()
+                                    .setColor(notification.type.includes("UP") ? 0x00ff00 : 0xff0000)
+                                    .setTitle(notification.title || "ランク変動通知")
+                                    .setDescription(`${notification.emoji} <@${userId}> のランクが変動しました！\n\n${notification.message}`)
+                                    .setTimestamp();
+
+                                await channel.send({ embeds: [embed] });
+                            }
+                        } catch (guildError) {
+                            console.error(`[ERROR] Failed to send notification to guild ${guildId}: ${guildError.message}`);
+                        }
                     }
 
                     notificationCount++;
