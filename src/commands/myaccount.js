@@ -1,16 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getValorantAccount } from "../services/valorant.js";
-
-// Helper to construct the base URL for images
-function getBaseUrl() {
-    if (process.env.APP_URL) {
-        return process.env.APP_URL;
-    }
-    if (process.env.KOYEB_DOMAIN) {
-        return `https://${process.env.KOYEB_DOMAIN}`;
-    }
-    return `http://localhost:${process.env.PORT || 3000}`;
-}
+import { getBaseUrl, isValidUrl } from "../utils/url.js";
 
 // Helper to get the rank image file name
 function getRankImageFile(rankName, division) {
@@ -92,9 +82,9 @@ const myaccountCommand = {
             inline: true,
         },
       ],
-      thumbnail: {
+      thumbnail: isValidUrl(rankImageUrl) ? {
         url: rankImageUrl,
-      },
+      } : undefined,
       footer: {
         text: "Valorant アカウント情報",
         icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),

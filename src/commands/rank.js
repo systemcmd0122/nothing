@@ -1,17 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getValorantAccount, getValorantRank } from "../services/valorant.js";
-
-// Helper to construct the base URL for images
-function getBaseUrl() {
-    if (process.env.APP_URL) {
-        return process.env.APP_URL.replace(/\/$/, "");
-    }
-    if (process.env.KOYEB_DOMAIN) {
-        return `https://${process.env.KOYEB_DOMAIN}`;
-    }
-    const port = process.env.PORT || 3000;
-    return `http://localhost:${port}`;
-}
+import { getBaseUrl, isValidUrl } from "../utils/url.js";
 
 // Helper to get the rank image file name
 function getRankImageFile(rankName, division) {
@@ -115,7 +104,7 @@ const rankCommand = {
             inline: true,
           },
         ],
-        thumbnail: { url: rankImageUrl },
+        thumbnail: isValidUrl(rankImageUrl) ? { url: rankImageUrl } : undefined,
         footer: {
           text: "Valorant ランク情報",
           icon_url: interaction.client.user.displayAvatarURL({ size: 64 }),
@@ -148,20 +137,41 @@ const rankCommand = {
           },
           timestamp: new Date(),
         };
-        await targetMember.send({ embeds: [accountInfo] }).catch(dmErr => {
-            console.error("Failed to send DM, replying in channel.", dmErr);
-            interaction.editReply({
-              content: "[エラー] ランク情報を取得できませんでした。DMを送信できませんでした。`/myaccount` で登録情報を確認してください。",
-            });
-        });
 
-        return interaction.editReply({
-          content: "[エラー] ランク情報を取得できませんでした。詳細はDMを確認してください。",
-        });
+        let dmSent = false;
+        try {
+            await targetMember.send({ embeds: [accountInfo] });
+            dmSent = true;
+        } catch (dmErr) {
+            console.warn(`Failed to send DM to ${targetMember.id}:`, dmErr.message);
+        }
+
+        if (interaction.deferred || interaction.replied) {
+            return interaction.editReply({
+                content: dmSent
+                  ? "[エラー] ランク情報を取得できませんでした。詳細はDMを確認してください。"
+                  : "[エラー] ランク情報を取得できませんでした。DMを送信できなかったため、こちらでお知らせします。`/myaccount` で登録情報を確認してください。",
+            });
+        } else {
+            return interaction.reply({
+                content: dmSent
+                  ? "[エラー] ランク情報を取得できませんでした。詳細はDMを確認してください。"
+                  : "[エラー] ランク情報を取得できませんでした。`/myaccount` で登録情報を確認してください。",
+                flags: 64
+            });
+        }
       } catch (e) {
-        return interaction.editReply({
-            content: "[エラー] ランク取得失敗の処理中、予期しないエラーが発生しました。"
-        });
+        console.error("Error in rank catch block:", e);
+        if (interaction.deferred || interaction.replied) {
+            return interaction.editReply({
+                content: "[エラー] ランク取得失敗の処理中、予期しないエラーが発生しました。"
+            });
+        } else {
+            return interaction.reply({
+                content: "[エラー] ランク取得失敗の処理中、予期しないエラーが発生しました。",
+                flags: 64
+            });
+        }
       }
     }
   },

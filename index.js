@@ -27,6 +27,7 @@ import { getRandomAgent, getRandomAgentByRole, getAllAgents } from "./src/servic
 import { checkAllUserRankUpdates } from "./src/services/rankChangeTracker.js";
 import { getAllRegisteredAccounts } from "./src/services/valorant.js";
 import { performGlobalRankUpdate } from "./src/services/globalUpdater.js";
+import { getBaseUrl } from "./src/utils/url.js";
 import "./src/config/firebase.js"; // Initialize Firebase
 
 dotenv.config();
@@ -179,9 +180,7 @@ function startKeepAlive() {
 function startKeepAlivePing() {
   setInterval(async () => {
     try {
-      const port = process.env.PORT || 3000;
-      const hostname = process.env.KOYEB_DOMAIN;
-      const url = hostname ? `https://${hostname}` : `http://localhost:${port}`;
+      const url = getBaseUrl();
       const protocol = url.startsWith("https") ? https : http;
 
       console.log(`[情報] Keep-Alive ping を送信中: ${url}`);
