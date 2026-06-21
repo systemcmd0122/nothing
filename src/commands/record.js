@@ -1,5 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getValorantAccount, getValorantMatchHistory } from "../services/valorant.js";
+import { getUserGuildSettings } from "../services/userGuildSettings.js";
+import { PermissionFlagsBits } from "discord.js";
 
 const recordCommand = {
   data: new SlashCommandBuilder()
@@ -22,6 +24,20 @@ const recordCommand = {
       await interaction.deferReply({ flags: 64 });
 
       const targetUser = interaction.options.getUser("user") || interaction.user;
+
+      // 連携設定の確認
+      const isSelf = targetUser.id === interaction.user.id;
+      const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
+
+      if (!isSelf && !isAdmin) {
+        const userGuildSettings = await getUserGuildSettings(targetUser.id, interaction.guildId);
+        if (userGuildSettings?.accountLinkEnabled === false) {
+          return interaction.editReply({
+            content: `${targetUser.username} はこのサーバーでの情報共有を無効にしています。`,
+          });
+        }
+      }
+
       const timezone = interaction.options.getString("timezone") || "Asia/Tokyo";
       const account = await getValorantAccount(targetUser.id);
 

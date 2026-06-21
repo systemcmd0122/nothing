@@ -1,6 +1,8 @@
 import { SlashCommandBuilder } from "discord.js";
 import { getValorantAccount, getValorantRank } from "../services/valorant.js";
 import { getRankImageUrl, isValidUrl } from "../utils/url.js";
+import { getUserGuildSettings } from "../services/userGuildSettings.js";
+import { PermissionFlagsBits } from "discord.js";
 
 const rankCommand = {
   data: new SlashCommandBuilder()
@@ -16,6 +18,20 @@ const rankCommand = {
     await interaction.deferReply({ flags: 64 });
 
     const targetMember = interaction.options.getMember("user") || interaction.member;
+
+    // 連携設定の確認
+    const isSelf = targetMember.id === interaction.user.id;
+    const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
+
+    if (!isSelf && !isAdmin) {
+      const userGuildSettings = await getUserGuildSettings(targetMember.id, interaction.guildId);
+      if (userGuildSettings?.accountLinkEnabled === false) {
+        return interaction.editReply({
+          content: `${targetMember.displayName} はこのサーバーでの情報共有を無効にしています。`,
+        });
+      }
+    }
+
     const account = await getValorantAccount(targetMember.id);
 
     if (!account) {

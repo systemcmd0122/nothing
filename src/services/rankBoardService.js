@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import { getAllRegisteredAccounts } from "./valorant.js";
 import { getGuildSettings, updateGuildSettings } from "./guildSettings.js";
+import { getUserGuildSettings } from "./userGuildSettings.js";
 
 /**
  * Generate rank board embed for a guild
@@ -25,10 +26,14 @@ export async function generateRankBoardEmbed(guild, accounts = null) {
         for (const account of accounts) {
             const member = members.get(account.discordUserId);
             if (member) {
-                filteredAccounts.push({
-                    ...account,
-                    displayName: member.displayName
-                });
+                // Check if user has enabled account linking for this guild
+                const userGuildSettings = await getUserGuildSettings(account.discordUserId, guild.id);
+                if (userGuildSettings?.accountLinkEnabled !== false) {
+                    filteredAccounts.push({
+                        ...account,
+                        displayName: member.displayName
+                    });
+                }
             }
         }
     } catch (err) {
