@@ -2,6 +2,7 @@ import { getAllRegisteredAccounts, getValorantRank } from "./valorant.js";
 import { checkRankChange, saveRankStatus, NOTIFICATION_CHANNEL_ID } from "./notificationService.js";
 import { updateRankInAccount } from "./rankUpdate.js";
 import { getGuildSettings } from "./guildSettings.js";
+import { getUserGuildSettings } from "./userGuildSettings.js";
 import { EmbedBuilder } from "discord.js";
 import { db } from "../config/firebase.js";
 import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
@@ -68,8 +69,28 @@ export function getRolePosition(rankName) {
  * @param {string} roleName - Role name
  * @returns {boolean}
  */
-function isRankRole(roleName) {
+export function isRankRole(roleName) {
   return Object.keys(RANK_INFO).some((rank) => roleName.includes(rank)) && roleName !== "取得失敗";
+}
+
+/**
+ * すべてのランクロールをメンバーから削除する
+ * @param {Object} member - Discord member object
+ */
+export async function removeAllRankRoles(member) {
+  try {
+    const oldRankRoles = member.roles.cache.filter((role) => isRankRole(role.name));
+    for (const oldRole of oldRankRoles.values()) {
+      try {
+        await member.roles.remove(oldRole, "連携解除またはランク更新によるロール削除");
+        console.log(`[情報] ${member.guild.name} で ${member.user.username} から ${oldRole.name} を削除しました`);
+      } catch (err) {
+        console.warn(`Failed to remove role ${oldRole.name}:`, err.message);
+      }
+    }
+  } catch (error) {
+    console.error(`[エラー] ロールの削除に失敗しました: ${error.message}`);
+  }
 }
 
 /**
@@ -221,6 +242,17 @@ export async function syncAllUserRanks(guild, client = null) {
             userId: account.discordUserId,
             reason: "Member not found in guild",
           });
+          continue;
+        }
+
+        // Check user privacy settings for this guild
+        const userGuildSettings = await getUserGuildSettings(account.discordUserId, guild.id);
+        const isLinkEnabled = userGuildSettings?.accountLinkEnabled !== false;
+
+        if (!isLinkEnabled) {
+          // Remove all rank roles if linking is disabled
+          await removeAllRankRoles(member);
+          results.processed++;
           continue;
         }
 

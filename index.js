@@ -20,6 +20,7 @@ import setupAgentBoardCommand from "./src/commands/setupAgentBoard.js";
 import notifysettingsCommand from "./src/commands/notifysettings.js";
 import settingsCommand from "./src/commands/settings.js";
 import setuprankboardCommand from "./src/commands/setuprankboard.js";
+import linksettingsCommand from "./src/commands/linksettings.js";
 import { handleModalSubmit } from "./src/commands/modalHandler.js";
 import { handleBoardButton } from "./src/commands/boardButtonHandler.js";
 import { handleAgentBoardButton } from "./src/services/agentBoardHandler.js";
@@ -211,7 +212,7 @@ const client = new Client({
   ],
 });
 
-const commands = [registerCommand, unregisterCommand, rankCommand, recordCommand, myaccountCommand, setupboardCommand, adminregisterCommand, deleteRankRolesCommand, pickCommand, setupAgentBoardCommand, notifysettingsCommand, settingsCommand, setuprankboardCommand];
+const commands = [registerCommand, unregisterCommand, rankCommand, recordCommand, myaccountCommand, setupboardCommand, adminregisterCommand, deleteRankRolesCommand, pickCommand, setupAgentBoardCommand, notifysettingsCommand, settingsCommand, setuprankboardCommand, linksettingsCommand];
 
 // Register slash commands
 async function registerSlashCommands() {

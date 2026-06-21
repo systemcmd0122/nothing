@@ -2,9 +2,10 @@ import { getAllRegisteredAccounts, getValorantRank } from "./valorant.js";
 import { checkRankChange, NOTIFICATION_CHANNEL_ID } from "./notificationService.js";
 import { updateRankInAccount } from "./rankUpdate.js";
 import { getGuildSettings } from "./guildSettings.js";
-import { initializeRankRoles, getRoleName, getRoleColor, getRolePosition } from "./rankSync.js";
+import { initializeRankRoles, getRoleName, getRoleColor, getRolePosition, removeAllRankRoles } from "./rankSync.js";
 import { EmbedBuilder } from "discord.js";
 import { updateRankBoard } from "./rankBoardService.js";
+import { getUserGuildSettings } from "./userGuildSettings.js";
 
 /**
  * Perform a global update for all users across all guilds
@@ -102,6 +103,10 @@ export async function performGlobalRankUpdate(client) {
                         const member = await guild.members.fetch(userId).catch(() => null);
                         if (!member) continue;
 
+                        // ユーザーのサーバーごとの連携設定を確認
+                        const userGuildSettings = await getUserGuildSettings(userId, guild.id);
+                        const isLinkEnabled = userGuildSettings?.accountLinkEnabled !== false;
+
                         // 取得成功時は「取得失敗」ロールを削除
                         const errorRole = member.roles.cache.find(r => r.name === "取得失敗");
                         if (errorRole) {
@@ -110,6 +115,12 @@ export async function performGlobalRankUpdate(client) {
                         }
 
                         const settings = await getGuildSettings(guild.id);
+
+                        if (!isLinkEnabled) {
+                            // 連携が無効な場合はランクロールをすべて削除
+                            await removeAllRankRoles(member);
+                            continue;
+                        }
 
                         // 1. Update Roles
                         if (settings?.rankRolesEnabled) {
@@ -148,6 +159,7 @@ export async function performGlobalRankUpdate(client) {
         console.error("[重大なエラー] performGlobalRankUpdate が失敗しました:", error);
     }
 }
+
 
 /**
  * Sync rank role for a specific member in a guild

@@ -140,6 +140,14 @@ export async function checkRankChange(userId, currentRankInfo) {
         const lastRankIndex = rankOrder.indexOf(lastStatus.currentRank);
         const currentRankIndex = rankOrder.indexOf(currentRankInfo.rank);
 
+        // Norank/Unranked への、またはからの変動は通知しない
+        const isUnranked = (rank) => rank === "Unranked" || rank === "Norank" || rank === "";
+        if (isUnranked(lastStatus.currentRank) || isUnranked(currentRankInfo.rank)) {
+            console.log(`[INFO] Rank change involving Unranked/Norank for ${userId}, skipping notification`);
+            await saveRankStatus(userId, currentRankInfo);
+            return null;
+        }
+
         let notification = null;
 
         // Check for rank tier change
